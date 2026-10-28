@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>钢陆棋局 · 三十国志</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #0f1319; color: #dbe3ec; overflow: hidden; font-size: 13px; }
+#app { display: flex; flex-direction: column; height: 100vh; }
+#topbar { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 54px; background: #161b22; border-bottom: 1px solid #262e38; overflow-x: auto; }
+#topbar::-webkit-scrollbar { height: 0; }
+.brand { font-size: 14px; font-weight: 700; letter-spacing: 3px; color: #e8c15a; }
+.divider { width: 1px; height: 22px; background: #2b3641; }
+.ts-item { display: flex; align-items: center; gap: 5px; font-size: 12px; height: 26px; padding: 0 6px; border-radius: 4px; }
+.ts-value { font-weight: 600; color: #dbe3ec; font-family: Consolas, monospace; font-size: 12px; }
+.ts-value.gold { color: #e8c15a; }
+.ts-label { font-size: 10px; color: #7d8b9b; }
+#date-display { font-size: 14px; color: #e8c15a; min-width: 96px; }
+.resource-dot { width: 9px; height: 9px; border-radius: 2px; }
+.dot-steel { background: #6b95c9; } .dot-oil { background: #c99a4a; } .dot-equip { background: #c9b14a; } .dot-man { background: #b8c9d9; } .dot-pp { background: #a97bc9; } .dot-tech { background: #5b9cff; }
+.mini-bar { width: 46px; height: 6px; background: #0d1218; border-radius: 3px; overflow: hidden; }
+.mini-fill { height: 100%; border-radius: 3px; }
+.mini-fill.green { background: linear-gradient(90deg, #1c7a43, #3fd07d); }
+.mini-fill.blue { background: linear-gradient(90deg, #2a5fa8, #5b9cff); }
+#nation-badge { display: flex; align-items: center; gap: 6px; padding: 0 8px; }
+#nation-badge .swatch { width: 12px; height: 12px; border-radius: 3px; }
+#nation-badge .nation-name { font-weight: 700; color: #eaf1f8; font-size: 13px; }
+#war-indicator { padding: 0 10px; height: 24px; line-height: 24px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+#war-indicator.peace { background: #1c242e; border: 1px solid #2b3641; color: #7d8b9b; }
+#war-indicator.war { background: #3a1e1e; border: 1px solid #a8312a; color: #ff8a8a; }
+.speed-group { margin-left: auto; display: flex; gap: 3px; }
+.speed-btn { padding: 4px 10px; min-width: 32px; background: #1c242e; border: 1px solid #2b3641; border-radius: 4px; color: #9aa9b8; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.speed-btn:hover { background: #26303c; color: #dbe3ec; }
+.speed-btn.active { background: #3a3118; border-color: #6b5a24; color: #ffd75e; }
+#main { flex: 1 1 auto; display: flex; min-height: 0; }
+#map-wrap { flex: 1 1 auto; position: relative; background: radial-gradient(ellipse at 45% 40%, #182029 0%, #0c1116 75%); overflow: hidden; }
+#map { width: 100%; height: 100%; cursor: grab; }
+#map.dragging { cursor: grabbing; }
+#map.hidden, #focus-tree-wrap.hidden { display: none; }
+#map-controls { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }
+.map-ctrl { width: 32px; height: 32px; background: #161b22; border: 1px solid #2b3641; border-radius: 4px; color: #9aa9b8; font-size: 16px; font-weight: 700; cursor: pointer; }
+.map-ctrl:hover { background: #26303c; color: #dbe3ec; }
+#map-info { position: absolute; bottom: 10px; left: 10px; background: rgba(22,27,34,.85); padding: 4px 10px; border-radius: 4px; font-size: 11px; color: #7d8b9b; z-index: 5; }
+#focus-tree-wrap { position: absolute; inset: 0; overflow: auto; padding: 8px 20px 20px; background: radial-gradient(ellipse at 45% 40%, #182029 0%, #0c1116 75%); }
+#focus-tree-wrap::-webkit-scrollbar { width: 10px; height: 10px; }
+#focus-tree-wrap::-webkit-scrollbar-thumb { background: #2b3641; border-radius: 5px; }
+#focus-legend { position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: 12px; padding: 6px 12px; background: rgba(18,23,29,.96); border: 1px solid #2b3641; border-radius: 6px; margin-bottom: 10px; font-size: 10px; font-weight: 600; }
+#focus-legend span { display: flex; align-items: center; gap: 4px; }
+#focus-legend .lg-dot { width: 9px; height: 9px; border-radius: 2px; }
+#focus-tree-canvas { position: relative; }
+#focus-tree-svg { position: absolute; inset: 0; pointer-events: none; }
+#focus-tree-nodes { position: absolute; inset: 0; }
+.focus-line { fill: none; stroke: #2b3641; stroke-width: 2; }
+.focus-line.done { stroke: #27AE60; stroke-width: 2.5; }
+.focus-node { position: absolute; width: 110px; height: 54px; padding: 3px 6px; background: #1a222c; border: 2px solid #33414f; border-left-width: 3px; border-radius: 5px; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; transition: all .15s; overflow: hidden; }
+.focus-node:hover { border-color: #4a5b6d; transform: translateY(-1px); }
+.focus-node.locked { opacity: .5; cursor: not-allowed; }
+.focus-node.available { border-color: #3B7DD8; }
+.focus-node.poor { border-color: #8a6d3b; }
+.focus-node.active { border-color: #e8c15a; box-shadow: 0 0 10px rgba(232,193,90,.45); background: #221e12; }
+.focus-node.done { border-color: #27AE60; background: #16241d; }
+.focus-node.selected { outline: 2px solid #fff; outline-offset: 1px; }
+.focus-title { font-size: 10px; font-weight: 700; color: #eaf1f8; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.focus-meta { font-size: 8px; color: #7d8b9b; }
+.focus-node.done .focus-meta { color: #3fd07d; }
+.focus-node.active .focus-meta { color: #e8c15a; }
+.focus-progress { height: 2px; background: #0d1218; border-radius: 1px; overflow: hidden; }
+.focus-progress-fill { height: 100%; background: linear-gradient(90deg, #b8901f, #ffd75e); }
+#sidebar { flex: 0 0 380px; width: 380px; background: #12171d; border-left: 1px solid #262e38; overflow-y: auto; display: flex; flex-direction: column; }
+#sidebar::-webkit-scrollbar { width: 8px; }
+#sidebar::-webkit-scrollbar-thumb { background: #2b3641; border-radius: 4px; }
+.tab-bar { flex: 0 0 auto; display: flex; position: sticky; top: 0; z-index: 10; background: #12171d; border-bottom: 1px solid #262e38; }
+.tab-btn { flex: 1; padding: 9px 0; background: none; border: none; border-bottom: 2px solid transparent; color: #7d8b9b; font-size: 10px; font-family: inherit; font-weight: 600; cursor: pointer; }
+.tab-btn:hover { color: #dbe3ec; }
+.tab-btn.active { color: #e8c15a; border-bottom-color: #e8c15a; }
+.tab-content { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.tab-content.hidden { display: none; }
+.card { background: #181e26; border: 1px solid #262e38; border-radius: 8px; padding: 12px; }
+.card h2 { font-size: 12px; letter-spacing: 2px; color: #7d8b9b; font-weight: 600; margin-bottom: 10px; }
+.province { stroke: #0b0f14; stroke-width: 1; cursor: pointer; transition: filter .12s, stroke .12s, opacity .2s; }
+.province:hover { filter: brightness(1.35); stroke: #fff; stroke-width: 1.5; }
+.province.capital { stroke: #ffd75e; stroke-width: 1.5; stroke-dasharray: 3 2; }
+.province.selected { stroke: #ffffff; stroke-width: 2; filter: brightness(1.4) drop-shadow(0 0 6px rgba(255,215,94,.9)); }
+.province.dimmed { opacity: .15; }
+.province.battle { stroke: #ff3b3b; stroke-width: 2; animation: battlePulse 0.9s infinite; }
+.province.encircled { stroke: #ff8800; stroke-width: 1.5; stroke-dasharray: 3 2; }
+@keyframes battlePulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.5); } }
+.province-label { fill: #ffffff; font-size: 4.5px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; pointer-events: none; paint-order: stroke; stroke: rgba(0,0,0,.85); stroke-width: 1.2px; letter-spacing: -0.2px; }
+.province-vp { fill: #ffd75e; font-size: 5px; font-weight: 700; text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: rgba(0,0,0,.85); stroke-width: 1.2px; }
+.province-units { fill: #fff; font-size: 6px; font-weight: 700; text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: rgba(0,0,0,.9); stroke-width: 2px; }
+.province-battle-icon { fill: #ff3b3b; font-size: 8px; font-weight: 700; text-anchor: middle; pointer-events: none; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; margin-top: 3px; }
+.swatch.big { width: 18px; height: 18px; margin-top: 0; border-radius: 4px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.stat { background: #151b22; border: 1px solid #232c36; border-radius: 5px; padding: 6px 8px; display: flex; justify-content: space-between; align-items: center; }
+.stat .k { font-size: 11px; color: #7d8b9b; }
+.stat .v { font-size: 12px; color: #d6e1ec; font-weight: 600; }
+.stat .v.gold { color: #ffd75e; } .stat .v.red { color: #ff6b6b; } .stat .v.green { color: #3fd07d; }
+.sec-title { font-size: 11px; color: #7d8b9b; letter-spacing: 1px; margin: 12px 0 6px; }
+.res-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.res-tag { font-size: 11px; padding: 3px 8px; border-radius: 10px; }
+.res-tag.steel { background: #2a3441; color: #9fc3ea; border: 1px solid #3b4c5f; }
+.res-tag.oil { background: #332c1f; color: #e0b56a; border: 1px solid #55462a; }
+.muted { color: #566270; font-size: 12px; }
+.chips { display: flex; flex-wrap: wrap; }
+.chip { padding: 3px 9px; margin: 0 4px 5px 0; border-radius: 12px; background: #232c37; border: 1px solid #33414f; color: #b9c7d6; font-size: 11px; cursor: pointer; font-family: inherit; }
+.chip:hover { background: #2f3b49; color: #fff; }
+.empty { font-size: 12px; color: #5c6774; padding: 16px 0; text-align: center; }
+.bar-wrap { height: 6px; background: #0d1218; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.bar-fill { height: 100%; border-radius: 3px; }
+.bar-fill.gold { background: linear-gradient(90deg, #b8901f, #ffd75e); }
+.bar-fill.blue { background: linear-gradient(90deg, #2a5fa8, #5b9cff); }
+.bar-fill.red { background: linear-gradient(90deg, #a8312a, #ff6b6b); }
+.bar-fill.green { background: linear-gradient(90deg, #1c7a43, #3fd07d); }
+.btn { display: block; width: 100%; padding: 8px 10px; margin-bottom: 6px; background: #232c37; border: 1px solid #33414f; border-radius: 6px; color: #dbe3ec; font-size: 12px; font-family: inherit; text-align: left; cursor: pointer; }
+.btn:hover:not(:disabled) { background: #2f3b49; border-color: #4a5b6d; }
+.btn:disabled { opacity: .42; cursor: not-allowed; }
+.btn .btn-cost { float: right; color: #7d8b9b; font-size: 11px; }
+.btn .btn-forecast { display: block; font-size: 10px; color: #9fc3ea; margin-top: 3px; }
+.btn .btn-forecast.good { color: #3fd07d; }
+.btn .btn-forecast.bad { color: #ff8a8a; }
+.btn.danger { border-color: #6b2c2c; color: #ff8a8a; }
+.btn.danger:hover:not(:disabled) { background: #3a1e1e; }
+.btn.primary { border-color: #2a5fa8; color: #9fc3ea; }
+.btn.primary:hover:not(:disabled) { background: #1e3350; }
+.btn.small { padding: 5px 8px; font-size: 11px; margin-bottom: 4px; }
+.btn.purple { border-color: #6b4a9a; color: #c9a5ff; }
+.btn.purple:hover:not(:disabled) { background: #2a1e3f; }
+.btn.teal { border-color: #16A085; color: #56B4E9; }
+.btn.teal:hover:not(:disabled) { background: #143a3a; }
+.queue-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; color: #d6e1ec; font-weight: 600; }
+.country-row { display: flex; gap: 9px; padding: 6px 8px; margin-bottom: 4px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; }
+.country-row:hover { background: #1d2530; }
+.country-row.active { background: #232d3a; border-color: #3d5266; }
+.country-row.at-war { border-color: #6b2c2c; background: #2a1a1a; }
+.country-row.dead { opacity: .4; }
+.c-body { flex: 1; min-width: 0; }
+.c-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.c-name { font-size: 12px; font-weight: 700; color: #eaf1f8; }
+.c-badge { font-size: 10px; color: #7d8b9b; }
+.c-line { font-size: 10px; color: #8393a4; line-height: 1.6; margin-top: 1px; }
+.div-card { background: #151b22; border: 1px solid #232c36; border-radius: 6px; padding: 8px; margin-bottom: 6px; transition: all .15s; }
+.div-card.selectable { cursor: pointer; }
+.div-card.selectable:hover { border-color: #4a5b6d; }
+.div-card.selected { border-color: #ffd75e; background: #221e12; }
+.div-card.in-battle { border-color: #6b2c2c; }
+.div-card.encircled { border-color: #ff8800; background: #2a1f14; }
+.div-head { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.div-name { font-size: 12px; font-weight: 700; color: #eaf1f8; }
+.div-id { font-size: 10px; color: #5c6774; }
+.div-stat { font-size: 10px; color: #8393a4; margin-top: 3px; }
+.div-check { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid #4a5b6d; margin-right: 6px; font-size: 10px; color: transparent; flex-shrink: 0; }
+.div-card.selected .div-check { border-color: #ffd75e; background: #ffd75e; color: #1a1a1a; }
+.bulk-actions { display: flex; gap: 4px; margin-bottom: 6px; }
+.bulk-actions .btn { flex: 1; margin: 0; padding: 5px 8px; font-size: 11px; text-align: center; }
+.prov-head { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+.prov-name { font-size: 16px; font-weight: 700; color: #f0f5fa; display: flex; align-items: center; gap: 8px; }
+.cap-tag { font-size: 10px; padding: 1px 6px; border-radius: 8px; background: #3a3118; color: #ffd75e; border: 1px solid #6b5a24; }
+.prov-owner { font-size: 12px; margin-top: 2px; }
+.diplo-row { display: flex; gap: 9px; padding: 6px 8px; margin-bottom: 4px; background: #151b22; border: 1px solid #232c36; border-radius: 6px; }
+.diplo-row.at-war { border-color: #6b2c2c; background: #2a1a1a; }
+.diplo-row.surrendered-row { opacity: .5; }
+/* 外交 3-Tab */
+.diplo-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.diplo-tab { flex: 1; padding: 8px 4px; background: #151b22; border: 1px solid #232c36; border-radius: 4px; color: #7d8b9b; font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.diplo-tab:hover { background: #1d2530; color: #dbe3ec; }
+.diplo-tab.active { background: #232d3a; border-color: #3d5266; color: #e8c15a; }
+.diplo-tab.war.active { background: #3a1e1e; border-color: #a8312a; color: #ff8a8a; }
+.diplo-tab.neighbor.active { background: #1e3a2f; border-color: #27AE60; color: #3fd07d; }
+.diplo-list { display: flex; flex-direction: column; gap: 4px; }
+.diplo-search { width: 100%; padding: 6px 10px; background: #1c242e; border: 1px solid #2b3641; border-radius: 4px; color: #dbe3ec; font-size: 12px; margin-bottom: 8px; }
+#logbar { flex: 0 0 auto; height: 96px; background: #0e1217; border-top: 1px solid #262e38; padding: 8px 20px; overflow-y: auto; font-size: 12px; }
+.log-line { line-height: 1.75; color: #8393a4; display: flex; gap: 8px; }
+.log-line .log-day { color: #e8c15a; min-width: 84px; font-family: Consolas, monospace; font-size: 11px; }
+.log-line.war { color: #ff8a8a; } .log-line.good { color: #3fd07d; } .log-line.diplo { color: #9fc3ea; } .log-line.info { color: #b8a5d8; }
+.log-line.tech { color: #56B4E9; }
+#tooltip { position: fixed; z-index: 3000; background: #0a0e12; border: 1px solid #3d5266; border-radius: 5px; padding: 6px 10px; font-size: 12px; color: #eaf1f8; max-width: 320px; line-height: 1.5; pointer-events: none; white-space: pre-line; }
+#tooltip.hidden { display: none; }
+.overlay { position: fixed; inset: 0; background: rgba(6,10,15,.85); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+.overlay.hidden { display: none; }
+.start-panel, .settings-panel, .endgame-panel, .event-panel { background: #161b22; border: 1px solid #3d5266; border-radius: 10px; padding: 32px 40px; max-width: 620px; max-height: 85vh; overflow-y: auto; }
+.start-panel { min-width: 420px; text-align: center; }
+.start-panel h2 { font-size: 26px; letter-spacing: 6px; color: #e8c15a; margin-bottom: 6px; }
+.start-panel .sub { font-size: 12px; color: #7d8b9b; margin-bottom: 24px; letter-spacing: 2px; }
+.start-btns { display: flex; flex-direction: column; gap: 10px; }
+.start-btn { padding: 12px 24px; border-radius: 6px; font-size: 14px; font-family: inherit; font-weight: 600; letter-spacing: 2px; cursor: pointer; background: #232c37; border: 1px solid #33414f; color: #dbe3ec; }
+.start-btn:hover:not(:disabled) { background: #2f3b49; }
+.start-btn.primary { background: #1e3350; border-color: #2a5fa8; color: #9fc3ea; }
+.start-btn:disabled { opacity: .4; cursor: not-allowed; }
+.start-panel .save-meta { margin-top: 20px; font-size: 11px; color: #5c6774; line-height: 1.7; }
+.settings-panel h2 { font-size: 16px; letter-spacing: 3px; color: #e8c15a; margin-bottom: 16px; display: flex; justify-content: space-between; }
+.settings-panel .close-x { background: none; border: none; color: #7d8b9b; font-size: 20px; cursor: pointer; }
+.setting-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #232c36; gap: 16px; }
+.setting-row select { background: #1c242e; border: 1px solid #2b3641; border-radius: 4px; color: #dbe3ec; font-size: 12px; padding: 5px 10px; }
+.save-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.save-actions .btn { flex: 1 1 100px; width: auto; padding: 8px 12px; text-align: center; }
+.save-info { font-size: 11px; color: #5c6774; margin-top: 12px; line-height: 1.7; background: #12171d; padding: 8px 12px; border-radius: 6px; }
+.endgame-panel { min-width: 400px; text-align: center; }
+#endgame-title { font-size: 24px; letter-spacing: 4px; margin-bottom: 8px; color: #e8c15a; }
+#endgame-title.victory { color: #3fd07d; } #endgame-title.defeat { color: #ff6b6b; }
+#endgame-reason { font-size: 14px; color: #8393a4; margin-bottom: 20px; line-height: 1.6; }
+.endgame-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px; text-align: left; }
+.endgame-stats .es-item { padding: 10px 14px; background: #12171d; border-radius: 6px; }
+.endgame-stats .es-k { font-size: 11px; color: #7d8b9b; }
+.endgame-stats .es-v { font-size: 18px; font-weight: 700; color: #eaf1f8; font-family: Consolas, monospace; }
+.endgame-stats .es-v.gold { color: #ffd75e; }
+.event-panel { min-width: 480px; }
+.event-title { font-size: 20px; letter-spacing: 3px; color: #e8c15a; margin-bottom: 12px; }
+.event-desc { font-size: 14px; color: #dbe3ec; line-height: 1.7; margin-bottom: 20px; }
+.event-options { display: flex; flex-direction: column; gap: 8px; }
+.event-option { padding: 10px 14px; background: #232c37; border: 1px solid #33414f; border-radius: 6px; color: #dbe3ec; font-size: 13px; text-align: left; cursor: pointer; font-family: inherit; }
+.event-option:hover { background: #2f3b49; border-color: #4a5b6d; }
+.event-option .opt-effect { display: block; font-size: 11px; color: #9fc3ea; margin-top: 3px; }
+#toast-container { position: fixed; top: 70px; right: 20px; z-index: 2500; display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.toast { background: #161b22; border: 1px solid #3d5266; border-radius: 6px; padding: 8px 14px; font-size: 12px; color: #eaf1f8; box-shadow: 0 4px 16px rgba(0,0,0,.5); animation: toastIn .3s ease; }
+.toast.good { border-color: #27AE60; }
+.toast.war { border-color: #a8312a; color: #ff8a8a; }
+.toast.tech { border-color: #2a5fa8; color: #9fc3ea; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+.general-card { background: #151b22; border: 1px solid #232c36; border-left: 3px solid #6b4a9a; border-radius: 5px; padding: 6px 8px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+.general-card .g-name { font-weight: 700; color: #eaf1f8; }
+.general-card .g-trait { font-size: 10px; color: #c9a5ff; font-style: italic; }
+.general-card .g-mods { font-size: 10px; color: #8393a4; }
+.general-card .g-mod-atk { color: #ff8a8a; }
+.general-card .g-mod-def { color: #9fc3ea; }
+.general-card.assigned { opacity: .45; }
+.nation-list-scroll { max-height: 400px; overflow-y: auto; }
+.nation-list-scroll::-webkit-scrollbar { width: 6px; }
+.nation-list-scroll::-webkit-scrollbar-thumb { background: #2b3641; border-radius: 3px; }
+.welcome-panel { min-width: 500px; max-width: 700px; }
+.welcome-title { font-size: 22px; letter-spacing: 4px; color: #e8c15a; margin-bottom: 8px; text-align: center; }
+.welcome-sub { font-size: 12px; color: #7d8b9b; text-align: center; margin-bottom: 20px; letter-spacing: 1px; }
+.welcome-tip { font-size: 12px; color: #b9c7d6; line-height: 1.8; padding: 8px 12px; background: #12171d; border-radius: 6px; margin-top: 12px; }
+.welcome-tip strong { color: #e8c15a; }
+.nation-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; }
+.nation-grid::-webkit-scrollbar { width: 6px; }
+.nation-grid::-webkit-scrollbar-thumb { background: #2b3641; border-radius: 3px; }
+.nation-grid .ng-item { padding: 8px; background: #151b22; border: 1px solid #232c36; border-radius: 5px; cursor: pointer; transition: all .15s; }
+.nation-grid .ng-item:hover { border-color: #4a5b6d; background: #1d2530; }
+.nation-grid .ng-item.selected { border-color: #e8c15a; background: #2a2418; box-shadow: 0 0 8px rgba(232,193,90,.4); }
+.ng-item .ng-color { width: 100%; height: 4px; border-radius: 2px; margin-bottom: 5px; }
+.ng-item .ng-name { font-size: 11px; font-weight: 700; color: #eaf1f8; }
+.ng-item .ng-info { font-size: 10px; color: #7d8b9b; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">钢陆棋局</div>
+    <div class="divider"></div>
+    <div class="ts-item"><span class="ts-value gold" id="date-display">1936-01-01</span></div>
+    <div class="divider"></div>
+    <div class="ts-item" id="nation-badge"><span class="swatch" id="nation-badge-swatch"></span><span class="nation-name" id="nation-name">阿斯特里亚联邦</span></div>
+    <div class="divider"></div>
+    <div class="ts-item"><span class="resource-dot dot-steel"></span><span class="ts-value" id="res-steel">0</span></div>
+    <div class="ts-item"><span class="resource-dot dot-oil"></span><span class="ts-value" id="res-oil">0</span></div>
+    <div class="ts-item"><span class="resource-dot dot-equip"></span><span class="ts-value" id="res-equip">0</span></div>
+    <div class="ts-item"><span class="resource-dot dot-man"></span><span class="ts-value" id="res-manpower">0</span></div>
+    <div class="ts-item"><span class="resource-dot dot-pp"></span><span class="ts-value gold" id="res-pp">0</span></div>
+    <div class="ts-item"><span class="resource-dot dot-tech"></span><span class="ts-value" id="res-tech">0</span></div>
+    <div class="divider"></div>
+    <div class="ts-item"><span class="ts-label">稳定</span><div class="mini-bar"><div class="mini-fill green" id="stab-fill"></div></div><span class="ts-value" id="stab-text">0%</span></div>
+    <div class="ts-item"><span class="ts-label">战支</span><div class="mini-bar"><div class="mini-fill blue" id="ws-fill"></div></div><span class="ts-value" id="ws-text">0%</span></div>
+    <div id="war-indicator" class="peace">和平</div>
+    <div class="speed-group">
+      <button class="speed-btn" data-speed="0">⏸</button>
+      <button class="speed-btn active" data-speed="1">1x</button>
+      <button class="speed-btn" data-speed="2">2x</button>
+      <button class="speed-btn" data-speed="4">4x</button>
+      <button class="speed-btn" id="btn-settings">⚙</button>
+    </div>
+  </header>
+  <main id="main">
+    <section id="map-wrap">
+      <svg id="map"></svg>
+      <div id="map-controls">
+        <button class="map-ctrl" id="btn-zoom-in">+</button>
+        <button class="map-ctrl" id="btn-zoom-out">−</button>
+        <button class="map-ctrl" id="btn-zoom-reset" style="font-size:12px">⊙</button>
+      </div>
+      <div id="map-info">滚轮缩放 · 拖动平移 · 点击省份</div>
+      <div id="focus-tree-wrap" class="hidden">
+        <div id="focus-legend"></div>
+        <div id="focus-tree-canvas"><svg id="focus-tree-svg"></svg><div id="focus-tree-nodes"></div></div>
+      </div>
+    </section>
+    <aside id="sidebar">
+      <div class="tab-bar">
+        <button class="tab-btn active" data-tab="province">省份</button>
+        <button class="tab-btn" data-tab="production">生产</button>
+        <button class="tab-btn" data-tab="focus">国策</button>
+        <button class="tab-btn" data-tab="tech">科技</button>
+        <button class="tab-btn" data-tab="military">军事</button>
+        <button class="tab-btn" data-tab="diplomacy">外交</button>
+      </div>
+      <div id="tab-province" class="tab-content">
+        <div id="country-list" class="card"></div>
+        <div id="province-detail" class="card"></div>
+      </div>
+      <div id="tab-production" class="tab-content hidden"></div>
+      <div id="tab-focus" class="tab-content hidden"><div id="focus-summary" class="card"></div><div id="focus-detail" class="card"></div></div>
+      <div id="tab-tech" class="tab-content hidden"></div>
+      <div id="tab-military" class="tab-content hidden"><div id="military-overview" class="card"></div><div id="military-generals" class="card"></div><div id="military-templates" class="card"></div><div id="military-battles" class="card"></div></div>
+      <div id="tab-diplomacy" class="tab-content hidden"><div id="diplomacy-panel" class="card"></div></div>
+    </aside>
+  </main>
+  <footer id="logbar"></footer>
+</div>
+<div id="toast-container"></div>
+<div id="tooltip" class="hidden"></div>
+<div id="start-overlay" class="overlay hidden">
+  <div class="start-panel welcome-panel">
+    <div class="welcome-title">钢陆棋局</div>
+    <div class="welcome-sub">三十国志 · 360 省 · 180 将</div>
+    <div style="margin-bottom:16px;color:#9fc3ea;font-size:13px;text-align:center">选择你的国家</div>
+    <div class="nation-grid" id="nation-grid"></div>
+    <div class="start-btns">
+      <button class="start-btn primary" id="btn-start-new">开始游戏</button>
+      <button class="start-btn" id="btn-start-continue">继续上次存档</button>
+    </div>
+    <div class="welcome-tip"><strong>操作：</strong>滚轮缩放 · 拖动平移 · 空格暂停 · Q 全选 · W 清空 · 1-6 切换标签</div>
+    <div class="save-meta" id="start-save-meta"></div>
+  </div>
+</div>
+<div id="settings-overlay" class="overlay hidden">
+  <div class="settings-panel">
+    <h2><span>设 置</span><button class="close-x" id="btn-close-settings">×</button></h2>
+    <div class="setting-row"><span>游戏速度</span><select id="set-speed"><option value="0">暂停</option><option value="1">1x</option><option value="2">2x</option><option value="4">4x</option></select></div>
+    <div class="setting-row"><span>音效</span><select id="set-sound"><option value="1">开</option><option value="0">关</option></select></div>
+    <div class="save-actions">
+      <button class="btn primary" id="btn-save">保存</button>
+      <button class="btn" id="btn-load">读取</button>
+      <button class="btn" id="btn-delete-save">删除存档</button>
+      <button class="btn danger" id="btn-back-menu">回到主菜单</button>
+    </div>
+    <div class="save-info" id="save-info">尚未存档</div>
+  </div>
+</div>
+<div id="endgame-overlay" class="overlay hidden">
+  <div class="endgame-panel">
+    <h2 id="endgame-title">游戏结束</h2>
+    <p id="endgame-reason"></p>
+    <div id="endgame-stats" class="endgame-stats"></div>
+    <button class="btn primary" id="btn-restart" style="text-align:center;font-size:14px;padding:12px 20px;">重新开始</button>
+  </div>
+</div>
+<div id="event-overlay" class="overlay hidden">
+  <div class="event-panel">
+    <div class="event-title" id="event-title">事件</div>
+    <div class="event-desc" id="event-desc"></div>
+    <div class="event-options" id="event-options"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const SVG_NS = "http://www.w3.org/2000/svg";
+const HEX_R = 25, HEX_H = Math.sqrt(3) * HEX_R;
+const COL_GAP = HEX_R * 1.5, ROW_GAP = HEX_H;
+const PADDING_X = 30, PADDING_Y = 30;
+const MAP_W = PADDING_X * 2 + 24 * COL_GAP;
+const MAP_H = PADDING_Y * 2 + 15 * ROW_GAP;
+const SAVE_KEY = "steel_league_save_v11";
+const SETTINGS_KEY = "steel_league_settings_v11";
+const SAVE_VERSION = 11;
+
+const CONFIG = {
+  ticksPerDay: 4, baseTickMs: 250,
+  civFactoryBuildPoints: 10, milFactoryEquipPoints: 8,
+  infraBuildSpeedBonus: 0.10, infraResourceBonus: 0.10,
+  manpowerGrowthMonthly: 0.015,
+  politicalPowerBase: 0.15, politicalPowerStabilityFactor: 0.5,
+  battleDamageFactor: 0.5, battleRandomMin: 0.85, battleRandomMax: 1.15,
+  orgRecoveryPerDay: 5, retreatOrgFloor: 10,
+  equipmentRecoveryPerDay: 0.1, equipmentDecayPerDay: 0.08, equipmentFloor: 0.1,
+  declareWarCost: 50, nonAggressionCost: 20, improveRelationsCost: 10, improveRelationsAmount: 10, nonAggressionDuration: 365,
+  aiStrategicInterval: 3, aiFocusInterval: 5, aiMaxMilFactories: 12, aiMaxCivFactories: 14,
+  techPointsPerMonth: 12, supplyDecay: 0.08,
+  tradeAmount: 100, tradePPGain: 30,
+  eventCheckInterval: 30, eventChance: 0.20,
+  victoryVPThreshold: 0.60,
+  constructions: {
+    civFactory: { name: "民用工厂", cost: 400, steelCost: 80 },
+    milFactory: { name: "军用工厂", cost: 350, steelCost: 120 },
+    infrastructure: { name: "基础设施", cost: 300, steelCost: 50 },
+  },
+};
+const TERRAIN = {
+  plain: { name: "平原", atkMod: 1.00, defMod: 1.00 }, hills: { name: "丘陵", atkMod: 0.85, defMod: 1.15 },
+  mountain: { name: "山地", atkMod: 0.65, defMod: 1.35 }, forest: { name: "森林", atkMod: 0.80, defMod: 1.20 },
+  urban: { name: "城市", atkMod: 0.70, defMod: 1.40 }, desert: { name: "沙漠", atkMod: 0.90, defMod: 0.95 },
+  tundra: { name: "苔原", atkMod: 0.80, defMod: 1.10 },
+};
+const IDEOLOGY = { democratic: "民主", autocratic: "威权", republican: "共和", socialist: "社会主义", monarchist: "君主制", theocracy: "神权", tribal: "部落" };
+const DIVISION_TEMPLATES = {
+  infantry: { id: "infantry", name: "步兵师", equipmentCost: 100, manpowerCost: 8000, attack: 10, defense: 20, maxOrganization: 60, maintenance: 0.5, unlockedByDefault: true, desc: "基础兵种", unlockSource: "初始解锁" },
+  eliteInfantry: { id: "eliteInfantry", name: "精锐步兵师", equipmentCost: 180, manpowerCost: 10000, attack: 18, defense: 28, maxOrganization: 70, maintenance: 0.8, desc: "装备精良", unlockSource: "兵种路径·第1级" },
+  armor: { id: "armor", name: "装甲师", equipmentCost: 250, manpowerCost: 6000, attack: 35, defense: 15, maxOrganization: 50, maintenance: 1.2, desc: "高攻低防", unlockSource: "兵种路径·第2级" },
+  artillery: { id: "artillery", name: "炮兵师", equipmentCost: 180, manpowerCost: 5000, attack: 40, defense: 8, maxOrganization: 40, maintenance: 0.8, desc: "最强攻击", unlockSource: "兵种路径·第3级" },
+  mechanized: { id: "mechanized", name: "机械化步兵", equipmentCost: 300, manpowerCost: 7000, attack: 25, defense: 22, maxOrganization: 55, maintenance: 1.0, desc: "攻防均衡", unlockSource: "兵种路径·第4级" },
+  heavyArmor: { id: "heavyArmor", name: "重型坦克师", equipmentCost: 450, manpowerCost: 5000, attack: 55, defense: 25, maxOrganization: 45, maintenance: 1.8, desc: "顶级兵种", unlockSource: "兵种路径·第5级" },
+};
+
+// 30 国数据（略写将领，完整 6 位/国，见文末说明）
+const NATIONS_DATA = {
+  nord: { name: "诺德兰帝国", color: "#8E44AD", ideology: "monarchist", provinces: ["冰原","雪峰","霜河","北风","白松","铁脊","极光","寒鸦","冻原","冷杉","寒湖","北极"], generals: [["寒冰元帅","极地战专家，苔原/山地作战攻防+10%",0.10,0.10],["北境之狼","突袭专家，全军攻击+18%但防御-8%",0.18,-0.08],["铁血将军","攻坚专家，对要塞/城市攻击+22%",0.22,-0.05],["白霜将军","坚守专家，全军防御+18%",-0.05,0.18],["冰河统帅","均衡指挥，全军攻防各+8%",0.08,0.08],["雪鹰将军","机动专家，行军无地形惩罚，攻+15%",0.15,0.03]], pp:70, mp:220000, cf:7, mf:5, steel:120, oil:15, st:0.60, ws:0.55 },
+  frost: { name: "霜原联邦", color: "#3498DB", ideology: "republican", provinces: ["霜岭","白原","冰湖","雪松","寒谷","霜城","北岩","冻原城","寒港","霜堡","冰壁","雪原"], generals: [["霜原元帅","寒地战术，苔原防御+15%",0.03,0.15],["白原将军","平原机动专家，平原攻击+12%",0.12,0.03],["冰湖统帅","后勤专家，补给范围+2",0.05,0.10],["雪松将军","游击专家，森林攻防各+10%",0.10,0.10],["寒谷男爵","均衡进攻，攻+9%",0.09,0.03],["霜堡之鹰","防御专家，全军防御+16%",-0.02,0.16]], pp:65, mp:210000, cf:8, mf:4, steel:100, oil:20, st:0.65, ws:0.45 },
+  glac: { name: "冰河共和国", color: "#5DADE2", ideology: "republican", provinces: ["冰川","雪河","冰谷","寒泉","冷峰","白河","冰城","雪岭","冻湖","极地城","冰原城","寒岭"], generals: [["冰川元帅","冰川战术，山地+10%防御+12%",0.10,0.12],["雪河将军","工兵专家，攻坚+18%",0.18,-0.03],["冰谷统帅","耐力专家，组织度上限+10%",0.08,0.10],["寒泉将军","后勤大师，补给损耗-30%",0.05,0.12],["白河之狐","突袭专家，攻+16%",0.16,-0.05],["冰城守将","要塞专家，防御+20%",-0.05,0.20]], pp:60, mp:200000, cf:8, mf:5, steel:110, oil:25, st:0.60, ws:0.50 },
+  aura: { name: "极光公国", color: "#48C9B0", ideology: "monarchist", provinces: ["极光城","星辉","光谷","曙光","北极光","绿光","彩云","星河","光辉","晨星","夜光","流光"], generals: [["星辉公爵","夜战专家，攻防各+8%",0.08,0.08],["光辉元帅","鼓舞专家，战支+10%",0.05,0.10],["极光将军","机动专家，行军速度+50%",0.14,0.02],["绿光将军","侦察专家，视野+2，攻+10%",0.10,0.05],["彩云伯爵","外交将才，关系+50%",0.05,0.08],["流光统帅","均衡专家，攻防+7%",0.07,0.07]], pp:80, mp:180000, cf:6, mf:4, steel:80, oil:30, st:0.70, ws:0.40 },
+  white: { name: "白峰王国", color: "#D5DBDB", ideology: "monarchist", provinces: ["白峰城","雪顶","冰峰","银峰","玉峰","白崖","雪崖","雪堡","白云","白湖","雪原城","峰顶"], generals: [["白峰国王","王师统帅，攻防各+10%",0.10,0.10],["雪顶公爵","山地专家，山地防御+20%",-0.02,0.20],["冰峰将军","攻坚专家，攻+20%",0.20,-0.05],["银峰统帅","组织专家，组织度+10%",0.08,0.12],["白崖将军","防御专家，防御+15%",0.00,0.15],["雪堡守将","要塞专家，防御+18%",-0.03,0.18]], pp:75, mp:190000, cf:7, mf:5, steel:130, oil:10, st:0.65, ws:0.55 },
+  raven: { name: "寒鸦议会", color: "#2C3E50", ideology: "democratic", provinces: ["鸦堡","寒鸦城","黑羽","暗鸦","夜鸦","鸦谷","鸦林","鸦湖","黑鸦","鸦巢","鸦城","鸦岭"], generals: [["黑羽议长","情报专家，攻+10%防+8%",0.10,0.08],["夜鸦统帅","夜袭专家，攻+20%",0.20,-0.05],["暗鸦将军","隐蔽专家，防御+18%",-0.03,0.18],["鸦谷男爵","均衡指挥，攻防+8%",0.08,0.08],["寒鸦元帅","机动专家，行军+40%",0.15,0.03],["鸦岭守将","防御专家，防御+16%",-0.02,0.16]], pp:90, mp:170000, cf:6, mf:5, steel:90, oil:20, st:0.75, ws:0.35 },
+  valo: { name: "瓦洛尼亚公国", color: "#C0392B", ideology: "autocratic", provinces: ["铁壁","石桥","灰谷","西港","红石","寒风","南林","西岭","铁堡","石城","灰岩","西原"], generals: [["铁壁公爵","防御专家，防御+20%",-0.05,0.20],["钢铁先锋","装甲专家，装甲师攻+20%",0.20,-0.10],["攻城锤","攻坚专家，攻+22%",0.22,-0.05],["石墙将军","坚守专家，防御+18%",0.05,0.18],["红石男爵","均衡型，攻防+8%",0.08,0.08],["灰谷之狼","突袭专家，攻+18%",0.18,-0.08]], pp:65, mp:200000, cf:8, mf:5, steel:140, oil:20, st:0.60, ws:0.45 },
+  iron: { name: "铁壁侯国", color: "#922B21", ideology: "monarchist", provinces: ["铁壁城","钢墙","铁门","坚堡","石垒","铁塔","要塞","铁墙城","铁石","铁岭","坚城","铁壁堡"], generals: [["铁壁侯爵","铁壁专家，防御+25%",-0.08,0.25],["钢墙将军","装甲专家，攻+18%",0.18,-0.05],["要塞元帅","要塞专家，防御+20%",-0.03,0.20],["石垒统帅","均衡型，攻防+8%",0.08,0.08],["铁塔将军","攻坚专家，攻+20%",0.20,-0.05],["坚城守将","防守专家，防御+18%",0.00,0.18]], pp:55, mp:190000, cf:7, mf:6, steel:150, oil:15, st:0.55, ws:0.50 },
+  stone: { name: "石冠王国", color: "#A04000", ideology: "monarchist", provinces: ["石冠城","石峰","岩堡","石林","石谷","石头城","石岭","石壁","石湖","石原","石岩","石冠堡"], generals: [["石冠国王","山地之王，山地攻防+12%",0.12,0.12],["石峰公爵","攻坚专家，攻+22%",0.22,-0.05],["岩堡将军","防御专家，防御+18%",-0.02,0.18],["石林统帅","游击专家，森林攻防+10%",0.10,0.10],["石谷男爵","均衡型，攻防+8%",0.08,0.08],["石壁守将","坚守专家，防御+20%",-0.05,0.20]], pp:60, mp:180000, cf:7, mf:5, steel:160, oil:10, st:0.60, ws:0.55 },
+  grey: { name: "灰谷联邦", color: "#7F8C8D", ideology: "republican", provinces: ["灰谷城","灰岭","灰石","灰港","灰湖","灰原","灰林","灰堡","灰岩","灰河","灰山","灰镇"], generals: [["灰谷元帅","均衡型，攻防+10%",0.10,0.10],["灰岭将军","山地专家，攻+12%防+15%",0.12,0.15],["灰石统帅","工兵专家，攻坚+18%",0.18,-0.03],["灰港之鹰","海战专家，登陆+20%",0.20,0.00],["灰湖男爵","后勤专家，补给+2",0.05,0.10],["灰河守将","防御专家，防御+18%",-0.03,0.18]], pp:80, mp:210000, cf:8, mf:5, steel:120, oil:30, st:0.70, ws:0.40 },
+  red: { name: "红石帝国", color: "#DC7633", ideology: "autocratic", provinces: ["红石城","红岭","红堡","红岩","红山","红河","红湖","红港","红石堡","红崖","红原","红林"], generals: [["红石大帝","帝王统帅，攻+15%防+10%",0.15,0.10],["红岭将军","突击专家，攻+20%",0.20,-0.08],["红堡元帅","攻坚专家，攻+22%",0.22,-0.05],["红岩统帅","要塞专家，防御+20%",-0.05,0.20],["红崖男爵","均衡型，攻防+8%",0.08,0.08],["红林之狼","游击专家，攻+15%防+8%",0.15,0.08]], pp:70, mp:220000, cf:7, mf:6, steel:140, oil:25, st:0.55, ws:0.65 },
+  south: { name: "南林共和国", color: "#229954", ideology: "republican", provinces: ["南林城","南木","南森","南港","南湖","南原","南堡","南岭","南溪","南林堡","南石","南岩"], generals: [["南林元帅","森林专家，森林攻防+15%",0.15,0.15],["南木将军","游击专家，攻+18%",0.18,-0.03],["南森统帅","狙击专家，防御+18%",-0.03,0.18],["南港之鹰","海战专家，攻+12%防+8%",0.12,0.08],["南湖男爵","均衡型，攻防+9%",0.09,0.09],["南林守将","防御专家，防御+16%",-0.02,0.16]], pp:85, mp:200000, cf:8, mf:4, steel:100, oil:35, st:0.70, ws:0.45 },
+  kard: { name: "卡尔迪亚共和国", color: "#27AE60", ideology: "republican", provinces: ["圣钟","麦田","河谷","双流","翠林","东岸","翠城","麦金","谷地","双河","翠谷","绿原"], generals: [["圣钟元帅","均衡型，攻防+8%",0.08,0.08],["河谷之鹰","机动专家，攻+12%防+5%",0.12,0.05],["翠林将军","游击专家，攻+15%防+8%",0.15,0.08],["东岸统帅","组织大师，防御+15%",0.03,0.15],["双流将军","后勤专家，补给+2",0.05,0.12],["南十字将军","坚守专家，防御+20%",-0.03,0.20]], pp:90, mp:220000, cf:8, mf:5, steel:80, oil:60, st:0.70, ws:0.40 },
+  mckin: { name: "麦金托邦", color: "#F1C40F", ideology: "democratic", provinces: ["麦城","金穗","丰收","粮仓","黄金","麦田城","金谷","金穗城","农庄","麦岭","金秋","麦浪"], generals: [["麦金元帅","后勤大师，补给损耗-30%",0.05,0.15],["金穗将军","均衡型，攻防+10%",0.10,0.10],["丰收统帅","组织专家，组织度+10%",0.05,0.12],["粮仓守将","防御专家，防御+18%",-0.03,0.18],["黄金男爵","商战专家，攻+15%",0.15,-0.02],["麦浪之鹰","机动专家，攻+12%防+5%",0.12,0.05]], pp:95, mp:240000, cf:8, mf:4, steel:70, oil:40, st:0.75, ws:0.30 },
+  rive: { name: "河谷联盟", color: "#17A589", ideology: "republican", provinces: ["河谷城","河湾","河流","河源","河港","河林","河原","河城","河东","河西","河北","河南"], generals: [["河谷议长","均衡型，攻防+9%",0.09,0.09],["河湾将军","两栖专家，攻+15%",0.15,0.00],["河源统帅","补给专家，补给+2",0.08,0.12],["河东之鹰","机动专家，攻+12%防+5%",0.12,0.05],["河西男爵","防御专家，防御+16%",-0.02,0.16],["河南守将","要塞专家，防御+18%",-0.03,0.18]], pp:85, mp:210000, cf:8, mf:5, steel:100, oil:30, st:0.70, ws:0.42 },
+  twin: { name: "双流王国", color: "#1ABC9C", ideology: "monarchist", provinces: ["双流城","双河","合流","双江","双泉","双湖","双峰","双城","双林","双原","双港","双溪"], generals: [["双流国王","王师统帅，攻防+10%",0.10,0.10],["双河公爵","进攻专家，攻+18%",0.18,-0.03],["合流将军","协同专家，攻防+8%",0.08,0.08],["双峰统帅","山地专家，山地+15%",0.10,0.15],["双城守将","要塞专家，防御+20%",-0.05,0.20],["双溪之鹰","机动专家，攻+12%防+5%",0.12,0.05]], pp:70, mp:190000, cf:7, mf:5, steel:110, oil:25, st:0.65, ws:0.50 },
+  green: { name: "翠林议会", color: "#2ECC71", ideology: "democratic", provinces: ["翠林城","绿林","翠谷","翠城","翠湖","翠原","翠山","翠岭","翠港","翠竹","翠松","翠岩"], generals: [["翠林议长","外交专家，关系+50%",0.05,0.08],["绿林元帅","游击专家，森林+20%",0.18,0.15],["翠谷将军","均衡型，攻防+8%",0.08,0.08],["翠湖之鹰","两栖专家，攻+15%",0.15,0.00],["翠竹守将","防御专家，防御+16%",-0.02,0.16],["翠松统帅","后勤专家，补给+2",0.05,0.10]], pp:95, mp:200000, cf:8, mf:4, steel:80, oil:30, st:0.75, ws:0.35 },
+  bell: { name: "圣钟帝国", color: "#BDC3C7", ideology: "theocracy", provinces: ["圣钟城","圣光","圣殿","圣地","圣山","圣城","圣湖","圣林","圣石","圣泉","圣谷","圣堡"], generals: [["圣钟大主教","神权统帅，攻防+10%",0.10,0.10],["圣光元帅","士气专家，攻+15%",0.15,0.00],["圣殿将军","防御专家，防御+20%",-0.05,0.20],["圣地统帅","攻坚专家，攻+20%",0.20,-0.05],["圣山男爵","山地专家，山地+15%",0.10,0.15],["圣湖守将","均衡型，攻防+8%",0.08,0.08]], pp:85, mp:180000, cf:7, mf:5, steel:90, oil:25, st:0.80, ws:0.40 },
+  suv: { name: "苏维拉联盟", color: "#117A65", ideology: "socialist", provinces: ["工厂","钢铁","红星","高原","铁锈","东望","工业","铁城","红岭","高岗","铁原","东港"], generals: [["红星政委","士气专家，攻+8%防+15%",0.08,0.15],["钢铁意志","攻坚专家，攻+22%",0.22,-0.05],["高原将军","坚守专家，防御+22%",-0.05,0.22],["工厂城之狼","装甲专家，攻+20%",0.20,-0.10],["东望港统帅","均衡型，攻防+10%",0.10,0.10],["铁锈将军","防御专家，防御+18%",0.03,0.18]], pp:55, mp:240000, cf:9, mf:6, steel:110, oil:30, st:0.55, ws:0.60 },
+  fact: { name: "工厂联合体", color: "#E67E22", ideology: "autocratic", provinces: ["工厂城","车间","机床","车床","机械","齿轮","轴承","引擎","装配","流水","熔炉","锻造"], generals: [["工厂元帅","生产专家，装备+20%",0.08,0.08],["机械将军","装甲专家，攻+22%",0.22,-0.10],["齿轮统帅","协同专家，攻防+10%",0.10,0.10],["引擎之鹰","机动专家，攻+14%",0.14,0.02],["熔炉守将","防御专家，防御+18%",-0.03,0.18],["锻造之狼","攻坚专家，攻+20%",0.20,-0.05]], pp:60, mp:220000, cf:9, mf:7, steel:140, oil:25, st:0.55, ws:0.55 },
+  steel: { name: "钢铁共和国", color: "#6C7A89", ideology: "republican", provinces: ["钢铁城","铁城","钢城","熔炉城","炉火","铁流","钢花","钢都","铁壁城","钢铁堡","铁石","钢岭"], generals: [["钢铁元帅","装甲专家，攻+20%",0.20,-0.10],["熔炉将军","攻坚专家，攻+22%",0.22,-0.05],["钢城统帅","均衡型，攻防+9%",0.09,0.09],["铁流之鹰","机动专家，攻+14%",0.14,0.02],["钢岭守将","防御专家，防御+18%",-0.03,0.18],["铁壁之狼","突袭专家，攻+18%",0.18,-0.08]], pp:65, mp:210000, cf:9, mf:7, steel:150, oil:20, st:0.60, ws:0.50 },
+  plate: { name: "高原公国", color: "#8E44AD", ideology: "monarchist", provinces: ["高原城","高岭","高城","高岗","高石","高岩","高湖","高峰","高谷","高崖","高堡","高林"], generals: [["高原公爵","山地之王，山地+15%",0.10,0.15],["高岭将军","防守专家，防御+20%",-0.05,0.20],["高峰元帅","攻坚专家，攻+20%",0.20,-0.05],["高石统帅","均衡型，攻防+8%",0.08,0.08],["高崖之鹰","突袭专家，攻+16%",0.16,-0.05],["高堡守将","要塞专家，防御+18%",-0.03,0.18]], pp:70, mp:190000, cf:7, mf:6, steel:120, oil:20, st:0.65, ws:0.52 },
+  rust: { name: "铁锈联邦", color: "#A93226", ideology: "autocratic", provinces: ["铁锈城","锈城","铁堡","锈原","铁崖","锈湖","铁林","锈港","锈岭","锈石","铁谷","锈城北"], generals: [["铁锈元帅","韧性专家，防御+20%",-0.03,0.20],["锈城将军","装甲专家，攻+18%",0.18,-0.08],["铁崖统帅","攻坚专家，攻+20%",0.20,-0.05],["锈湖男爵","均衡型，攻防+8%",0.08,0.08],["锈港之鹰","海战专家，攻+15%",0.15,0.00],["锈岭守将","要塞专家，防御+18%",-0.03,0.18]], pp:60, mp:200000, cf:8, mf:6, steel:130, oil:25, st:0.55, ws:0.55 },
+  east: { name: "东望共和国", color: "#1F618D", ideology: "republican", provinces: ["东望城","东港","东岭","东城","东湖","东林","东原","东石","东峰","东谷","东崖","东堡"], generals: [["东望元帅","侦察专家，攻+10%防+10%",0.10,0.10],["东港将军","海战专家，攻+18%",0.18,0.00],["东岭统帅","山地专家，山地+15%",0.10,0.15],["东城守将","要塞专家，防御+18%",-0.03,0.18],["东峰之鹰","机动专家，攻+14%",0.14,0.02],["东林之狼","游击专家，攻+15%防+8%",0.15,0.08]], pp:85, mp:210000, cf:8, mf:5, steel:100, oil:35, st:0.72, ws:0.40 },
+  tasia: { name: "塔西亚王国", color: "#D35400", ideology: "monarchist", provinces: ["黎明","沙丘","绿洲","赤石","棕榈","荒原","沙城","沙堡","沙湖","沙谷","沙岭","沙漠"], generals: [["沙漠之狐","沙漠专家，沙漠攻防+15%",0.15,0.15],["黎明先锋","突袭专家，攻+20%",0.20,-0.05],["绿洲统帅","补给专家，补给+2",0.05,0.15],["棕榈将军","均衡型，攻防+9%",0.09,0.09],["赤石剑士","攻坚专家，攻+22%",0.22,-0.05],["沙丘守望","防御专家，防御+20%",-0.05,0.20]], pp:75, mp:180000, cf:7, mf:4, steel:60, oil:80, st:0.65, ws:0.35 },
+  dawn: { name: "黎明王朝", color: "#F39C12", ideology: "monarchist", provinces: ["黎明城","曙光","朝霞","晨星","日出","晨光","晨钟","晨风","晨露","晨光城","晨星堡","朝霞原"], generals: [["黎明大帝","帝王统帅，攻防+12%",0.12,0.12],["曙光将军","突击专家，攻+20%",0.20,-0.05],["晨星元帅","均衡型，攻防+10%",0.10,0.10],["日出统帅","机动专家，攻+14%",0.14,0.02],["朝霞男爵","防御专家，防御+18%",-0.03,0.18],["晨光之鹰","侦察专家，攻+12%",0.12,0.03]], pp:80, mp:190000, cf:7, mf:5, steel:70, oil:70, st:0.68, ws:0.42 },
+  dune: { name: "沙丘埃米尔国", color: "#B7950B", ideology: "autocratic", provinces: ["沙丘城","沙堡城","沙城","沙岭城","沙谷城","沙漠城","沙原城","沙泉","沙洲","沙岩","沙崖","沙湖城"], generals: [["沙丘埃米尔","沙漠王者，沙漠攻防+18%",0.18,0.18],["沙堡将军","突袭专家，攻+22%",0.22,-0.05],["沙城统帅","防御专家，防御+20%",-0.05,0.20],["沙岭之鹰","机动专家，攻+15%",0.15,0.02],["沙泉男爵","补给专家，补给+2",0.05,0.12],["沙崖守将","攻坚专家，攻+18%",0.18,-0.05]], pp:70, mp:180000, cf:7, mf:5, steel:50, oil:85, st:0.60, ws:0.55 },
+  oasis: { name: "绿洲议会", color: "#7DCEA0", ideology: "democratic", provinces: ["绿洲城","清泉","水草","棕榈城","椰林","绿荫","泉城","水乡","碧湖","绿原城","泉谷","清溪"], generals: [["绿洲议长","外交专家，关系+50%",0.05,0.10],["清泉元帅","补给专家，补给+2",0.08,0.15],["椰林将军","游击专家，攻+15%防+10%",0.15,0.10],["绿荫统帅","均衡型，攻防+9%",0.09,0.09],["碧湖之鹰","机动专家，攻+12%防+5%",0.12,0.05],["清溪守将","防御专家，防御+16%",-0.02,0.16]], pp:90, mp:170000, cf:7, mf:4, steel:60, oil:70, st:0.75, ws:0.30 },
+  redcliff: { name: "赤石汗国", color: "#CB4335", ideology: "tribal", provinces: ["赤石城","赤城","赤峰","赤崖","赤岩","赤谷","赤原","赤林","赤湖","赤堡","赤岭","赤河"], generals: [["赤石大汗","汗王统帅，攻+18%防+10%",0.18,0.10],["赤峰将军","突袭专家，攻+22%",0.22,-0.05],["赤崖元帅","攻坚专家，攻+20%",0.20,-0.05],["赤谷统帅","均衡型，攻防+8%",0.08,0.08],["赤原之鹰","骑兵专家，攻+20%防-5%",0.20,-0.05],["赤湖守将","防御专家，防御+18%",-0.03,0.18]], pp:65, mp:200000, cf:6, mf:6, steel:80, oil:60, st:0.55, ws:0.65 },
+  asteria: { name: "阿斯特里亚联邦", color: "#3B7DD8", ideology: "democratic", provinces: ["晨曦","银月","铁砧","白塔","碧水","东岭","金穗","云渡","赤石","青松","翠湖","西林"], generals: [["隆德将军","闪电战专家，攻击+15%防御-5%",0.15,-0.05],["赫伯特伯爵","组织大师，防御+12%",0.00,0.12],["艾森威尔","均衡型，攻防各+8%",0.08,0.08],["巴顿装甲","装甲专家，装甲师攻+20%",0.20,-0.10],["布莱德雷","防御专家，防御+18%",-0.03,0.18],["李将军","后勤专家，补给+2",0.05,0.10]], pp:80, mp:250000, cf:8, mf:5, steel:100, oil:40, st:0.65, ws:0.50 },
+};
+
+const NATION_ORDER = ["nord","frost","glac","aura","white","raven","valo","iron","stone","grey","red","south","kard","mckin","rive","twin","green","bell","suv","fact","steel","plate","rust","east","tasia","dawn","dune","oasis","redcliff","asteria"];
+const COUNTRIES = {}, GENERALS = {};
+NATION_ORDER.forEach((nid, idx) => {
+  const d = NATIONS_DATA[nid];
+  const gridRow = Math.floor(idx / 6), gridCol = idx % 6;
+  COUNTRIES[nid] = {
+    id: nid, name: d.name, color: d.color, ideology: d.ideology, gridRow, gridCol,
+    capitalId: `${nid}_1_1`, politicalPower: d.pp, manpower: d.mp,
+    civilianFactories: d.cf, militaryFactories: d.mf,
+    resources: { steel: d.steel, oil: d.oil },
+    stability: d.st, warSupport: d.ws,
+    relations: {}, wars: [], nonAggressionPacts: {},
+    equipStockInit: 180 + Math.floor(d.mf * 20),
+  };
+  GENERALS[nid] = d.generals.map((g, i) => ({
+    id: `gen_${nid}_${i}`, name: g[0], trait: g[1], attackMod: g[2], defenseMod: g[3],
+  }));
+});
+
+const PROVINCES = [];
+NATION_ORDER.forEach(nid => {
+  const n = COUNTRIES[nid];
+  const names = NATIONS_DATA[nid].provinces;
+  for (let c = 0; c < 4; c++) for (let r = 0; r < 3; r++) {
+    const col = n.gridCol * 4 + c, row = n.gridRow * 3 + r;
+    const nameIdx = c * 3 + r;
+    let terrain;
+    if (row <= 2) terrain = ["tundra", "mountain", "forest"][(c + r) % 3];
+    else if (row <= 5) terrain = ["hills", "forest", "plain"][(c + r) % 3];
+    else if (row <= 8) terrain = ["plain", "hills", "forest"][(c + r) % 3];
+    else if (row <= 11) terrain = ["plain", "hills", "desert"][(c + r) % 3];
+    else terrain = ["desert", "plain", "hills"][(c + r) % 3];
+    const isCapital = (c === 1 || c === 2) && r === 1;
+    let vp = 1;
+    if (isCapital) vp = 5;
+    else if (c === 0 && r === 0) vp = 3;
+    else if (c === 3 && r === 2) vp = 2;
+    else if (r === 1) vp = 2;
+    const isSteel = ["hills", "mountain"].includes(terrain);
+    const isOil = ["desert", "tundra"].includes(terrain);
+    const res = { steel: 0, oil: 0 };
+    if (isSteel) res.steel = 1 + ((c + r) % 3);
+    if (isOil) res.oil = 1 + ((c + r) % 2);
+    if (isCapital) res.steel += 1;
+    PROVINCES.push({
+      id: `${nid}_${c}_${r}`, name: names[nameIdx] || `${n.name}-${nameIdx}`,
+      owner: nid, terrain, victoryPoint: vp, resources: res, col, row, isCapital,
+    });
+  }
+});
+PROVINCES.forEach(p => {
+  p.x = PADDING_X + p.col * COL_GAP;
+  p.y = PADDING_Y + p.row * ROW_GAP + (p.col % 2) * (HEX_H / 2);
+  p.neighbors = [];
+});
+for (let i = 0; i < PROVINCES.length; i++) {
+  for (let j = i + 1; j < PROVINCES.length; j++) {
+    const a = PROVINCES[i], b = PROVINCES[j];
+    const dx = a.x - b.x, dy = a.y - b.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 0.1 && dist < 60) { a.neighbors.push(b.id); b.neighbors.push(a.id); }
+  }
+}
+const PROVINCE_INDEX = Object.fromEntries(PROVINCES.map(p => [p.id, p]));
+function getProvince(id) { return PROVINCE_INDEX[id] || null; }
+for (const id in COUNTRIES) for (const oid in COUNTRIES) if (oid !== id) COUNTRIES[id].relations[oid] = 0;
+
+const TECHS = [
+  { id: "tech_inf_1", name: "步兵武器 I", cost: 60, effects: [{ type: "ADD_MODIFIER", key: "attack", value: 0.03 }] },
+  { id: "tech_inf_2", name: "步兵武器 II", cost: 120, requires: ["tech_inf_1"], effects: [{ type: "ADD_MODIFIER", key: "attack", value: 0.05 }] },
+  { id: "tech_med_1", name: "战地医疗 I", cost: 80, effects: [{ type: "ADD_MODIFIER", key: "defense", value: 0.03 }] },
+  { id: "tech_med_2", name: "战地医疗 II", cost: 150, requires: ["tech_med_1"], effects: [{ type: "ADD_MODIFIER", key: "defense", value: 0.05 }] },
+  { id: "tech_ind_1", name: "工业技术 I", cost: 100, effects: [{ type: "ADD_CIV_FACTORY", value: 1 }] },
+  { id: "tech_ind_2", name: "工业技术 II", cost: 180, requires: ["tech_ind_1"], effects: [{ type: "ADD_CIV_FACTORY", value: 2 }] },
+  { id: "tech_mil_1", name: "军工技术 I", cost: 100, effects: [{ type: "ADD_MIL_FACTORY", value: 1 }] },
+  { id: "tech_mil_2", name: "军工技术 II", cost: 180, requires: ["tech_mil_1"], effects: [{ type: "ADD_MIL_FACTORY", value: 2 }] },
+  { id: "tech_log_1", name: "后勤优化", cost: 90, effects: [{ type: "ADD_RESOURCE", steel: 3, oil: 2 }] },
+];
+
+const EVENTS = [
+  { id: "evt_strike", title: "工人罢工", desc: "工厂工人要求加薪。", options: [
+    { text: "提高工资", effects: [{ type: "ADD_STABILITY", value: -0.05 }, { type: "ADD_MIL_FACTORY", value: 1 }], effectText: "稳定 -5%，军用工厂 +1" },
+    { text: "强制镇压", effects: [{ type: "ADD_STABILITY", value: -0.10 }, { type: "ADD_PP", value: 30 }], effectText: "稳定 -10%，政治 +30" },
+    { text: "谈判妥协", effects: [{ type: "ADD_STABILITY", value: -0.02 }], effectText: "稳定 -2%" },
+  ]},
+  { id: "evt_bumper", title: "丰收季节", desc: "今年风调雨顺。", options: [
+    { text: "增加人口", effects: [{ type: "ADD_MANPOWER", value: 15000 }, { type: "ADD_STABILITY", value: 0.03 }], effectText: "人力+15K，稳定+3%" },
+    { text: "储存粮食", effects: [{ type: "ADD_RESOURCE", steel: 0, oil: 3 }], effectText: "石油+3/日" },
+  ]},
+  { id: "evt_crisis", title: "经济危机", desc: "股市暴跌。", options: [
+    { text: "注资救市", effects: [{ type: "ADD_PP", value: -30 }, { type: "ADD_STABILITY", value: 0.05 }], effectText: "政治-30，稳定+5%" },
+    { text: "放任不管", effects: [{ type: "ADD_STABILITY", value: -0.08 }, { type: "ADD_CIV_FACTORY", value: -1 }], effectText: "稳定-8%，民用-1" },
+  ]},
+  { id: "evt_hero", title: "战斗英雄", desc: "年轻军官英勇作战。", options: [
+    { text: "宣传英雄", effects: [{ type: "ADD_WAR_SUPPORT", value: 0.06 }, { type: "ADD_PP", value: 15 }], effectText: "战支+6%，政治+15" },
+    { text: "晋升将军", effects: [{ type: "ADD_MODIFIER", key: "attack", value: 0.03 }], effectText: "全军攻击+3%" },
+  ]},
+  { id: "evt_scientist", title: "科学家献身", desc: "顶尖科学家归国。", options: [
+    { text: "成立研究院", effects: [{ type: "ADD_TECH_POINTS", value: 60 }], effectText: "科研点+60" },
+    { text: "军民两用", effects: [{ type: "ADD_RESOURCE", steel: 5, oil: 0 }], effectText: "钢铁+5/日" },
+  ]},
+  { id: "evt_protest", title: "反战游行", desc: "民众抗议战争。", options: [
+    { text: "镇压游行", effects: [{ type: "ADD_WAR_SUPPORT", value: 0.03 }, { type: "ADD_STABILITY", value: -0.05 }], effectText: "战支+3%，稳定-5%" },
+    { text: "倾听民意", effects: [{ type: "ADD_STABILITY", value: 0.05 }, { type: "ADD_WAR_SUPPORT", value: -0.03 }], effectText: "稳定+5%，战支-3%" },
+  ]},
+];
+
+const FOCUS_PATHS = [
+  { label: "兵种解锁", color: "#ff6b6b", focuses: [
+    { name: "精锐训练", desc: "解锁精锐步兵", effects: [{ type: "UNLOCK_TEMPLATE", templateId: "eliteInfantry" }, { type: "ADD_MANPOWER", value: 5000 }] },
+    { name: "装甲理论", desc: "解锁装甲师", effects: [{ type: "UNLOCK_TEMPLATE", templateId: "armor" }, { type: "ADD_MIL_FACTORY", value: 1 }] },
+    { name: "炮兵学说", desc: "解锁炮兵师", effects: [{ type: "UNLOCK_TEMPLATE", templateId: "artillery" }, { type: "ADD_MIL_FACTORY", value: 1 }] },
+    { name: "机械化改革", desc: "解锁机械化步兵", effects: [{ type: "UNLOCK_TEMPLATE", templateId: "mechanized" }, { type: "ADD_MIL_FACTORY", value: 1 }] },
+    { name: "重型坦克计划", desc: "解锁重型坦克师", effects: [{ type: "UNLOCK_TEMPLATE", templateId: "heavyArmor" }, { type: "ADD_MIL_FACTORY", value: 2 }] },
+  ]},
+  { label: "军事强化", color: "#e8c15a", focuses: [
+    { name: "进攻学说I", desc: "攻击+5%", effects: [{ type: "ADD_MODIFIER", key: "attack", value: 0.05 }] },
+    { name: "防御学说I", desc: "防御+5%", effects: [{ type: "ADD_MODIFIER", key: "defense", value: 0.05 }] },
+    { name: "进攻学说II", desc: "攻击+5%", effects: [{ type: "ADD_MODIFIER", key: "attack", value: 0.05 }] },
+    { name: "防御学说II", desc: "防御+5%", effects: [{ type: "ADD_MODIFIER", key: "defense", value: 0.05 }] },
+    { name: "军事总动员", desc: "攻防+10%", effects: [{ type: "ADD_MODIFIER", key: "attack", value: 0.10 }, { type: "ADD_MODIFIER", key: "defense", value: 0.10 }] },
+  ]},
+  { label: "工业建设", color: "#3B7DD8", focuses: [
+    { name: "工业起步", desc: "+1民用", effects: [{ type: "ADD_CIV_FACTORY", value: 1 }] },
+    { name: "工业扩展", desc: "+1民用", effects: [{ type: "ADD_CIV_FACTORY", value: 1 }] },
+    { name: "工业繁荣", desc: "+2民用", effects: [{ type: "ADD_CIV_FACTORY", value: 2 }] },
+    { name: "工业升级", desc: "+2民用+1军用", effects: [{ type: "ADD_CIV_FACTORY", value: 2 }, { type: "ADD_MIL_FACTORY", value: 1 }] },
+    { name: "工业帝国", desc: "+3民用+2军用", effects: [{ type: "ADD_CIV_FACTORY", value: 3 }, { type: "ADD_MIL_FACTORY", value: 2 }] },
+  ]},
+  { label: "军工扩张", color: "#5b9cff", focuses: [
+    { name: "军工起步", desc: "+1军用", effects: [{ type: "ADD_MIL_FACTORY", value: 1 }] },
+    { name: "军工扩展", desc: "+1军用", effects: [{ type: "ADD_MIL_FACTORY", value: 1 }] },
+    { name: "军工繁荣", desc: "+2军用", effects: [{ type: "ADD_MIL_FACTORY", value: 2 }] },
+    { name: "军工升级", desc: "+2军用+1民用", effects: [{ type: "ADD_MIL_FACTORY", value: 2 }, { type: "ADD_CIV_FACTORY", value: 1 }] },
+    { name: "军事帝国", desc: "+3军用", effects: [{ type: "ADD_MIL_FACTORY", value: 3 }] },
+  ]},
+  { label: "钢铁开发", color: "#6b95c9", focuses: [
+    { name: "钢铁开采I", desc: "钢+3", effects: [{ type: "ADD_RESOURCE", steel: 3, oil: 0 }] },
+    { name: "钢铁开采II", desc: "钢+5", effects: [{ type: "ADD_RESOURCE", steel: 5, oil: 0 }] },
+    { name: "钢铁开采III", desc: "钢+8", effects: [{ type: "ADD_RESOURCE", steel: 8, oil: 0 }] },
+    { name: "钢铁开采IV", desc: "钢+10", effects: [{ type: "ADD_RESOURCE", steel: 10, oil: 0 }] },
+    { name: "钢铁帝国", desc: "钢+15", effects: [{ type: "ADD_RESOURCE", steel: 15, oil: 0 }] },
+  ]},
+  { label: "石油开发", color: "#c99a4a", focuses: [
+    { name: "油田I", desc: "油+2", effects: [{ type: "ADD_RESOURCE", steel: 0, oil: 2 }] },
+    { name: "油田II", desc: "油+4", effects: [{ type: "ADD_RESOURCE", steel: 0, oil: 4 }] },
+    { name: "油田III", desc: "油+6", effects: [{ type: "ADD_RESOURCE", steel: 0, oil: 6 }] },
+    { name: "油田IV", desc: "油+8", effects: [{ type: "ADD_RESOURCE", steel: 0, oil: 8 }] },
+    { name: "石油帝国", desc: "油+10", effects: [{ type: "ADD_RESOURCE", steel: 0, oil: 10 }] },
+  ]},
+  { label: "人力动员", color: "#b8c9d9", focuses: [
+    { name: "人口普查", desc: "+1万", effects: [{ type: "ADD_MANPOWER", value: 10000 }] },
+    { name: "征兵动员", desc: "+2万", effects: [{ type: "ADD_MANPOWER", value: 20000 }] },
+    { name: "全民皆兵", desc: "+3万", effects: [{ type: "ADD_MANPOWER", value: 30000 }] },
+    { name: "总动员", desc: "+4万", effects: [{ type: "ADD_MANPOWER", value: 40000 }] },
+    { name: "举国动员", desc: "+5万", effects: [{ type: "ADD_MANPOWER", value: 50000 }] },
+  ]},
+  { label: "社会稳定", color: "#c9a5ff", focuses: [
+    { name: "社会改革I", desc: "稳+3%", effects: [{ type: "ADD_STABILITY", value: 0.03 }] },
+    { name: "社会改革II", desc: "稳+3%", effects: [{ type: "ADD_STABILITY", value: 0.03 }] },
+    { name: "社会改革III", desc: "稳+4%", effects: [{ type: "ADD_STABILITY", value: 0.04 }] },
+    { name: "社会改革IV", desc: "稳+5%", effects: [{ type: "ADD_STABILITY", value: 0.05 }] },
+    { name: "社会稳定", desc: "稳+5%", effects: [{ type: "ADD_STABILITY", value: 0.05 }] },
+  ]},
+  { label: "战争动员", color: "#ff9f43", focuses: [
+    { name: "宣传I", desc: "战支+5%", effects: [{ type: "ADD_WAR_SUPPORT", value: 0.05 }] },
+    { name: "宣传II", desc: "战支+5%", effects: [{ type: "ADD_WAR_SUPPORT", value: 0.05 }] },
+    { name: "宣传III", desc: "战支+6%", effects: [{ type: "ADD_WAR_SUPPORT", value: 0.06 }] },
+    { name: "宣传IV", desc: "战支+7%", effects: [{ type: "ADD_WAR_SUPPORT", value: 0.07 }] },
+    { name: "全国动员", desc: "战支+7%", effects: [{ type: "ADD_WAR_SUPPORT", value: 0.07 }] },
+  ]},
+  { label: "特殊项目", color: "#ff4757", focuses: [
+    { name: "基础设施", desc: "+1民用+2%稳", effects: [{ type: "ADD_CIV_FACTORY", value: 1 }, { type: "ADD_STABILITY", value: 0.02 }] },
+    { name: "紧急军备", desc: "+2军用", effects: [{ type: "ADD_MIL_FACTORY", value: 2 }] },
+    { name: "资源整合", desc: "钢+5 油+5", effects: [{ type: "ADD_RESOURCE", steel: 5, oil: 5 }] },
+    { name: "国家意志", desc: "攻防+5%", effects: [{ type: "ADD_MODIFIER", key: "attack", value: 0.05 }, { type: "ADD_MODIFIER", key: "defense", value: 0.05 }] },
+    { name: "大陆霸主", desc: "综合加成", effects: [{ type: "ADD_MIL_FACTORY", value: 2 }, { type: "ADD_WAR_SUPPORT", value: 0.10 }, { type: "ADD_STABILITY", value: 0.10 }] },
+  ]},
+];
+function generateFocusTree(nationId) {
+  const result = [];
+  FOCUS_PATHS.forEach((path, row) => path.focuses.forEach((f, col) => {
+    result.push({
+      id: `${nationId}_${row}_${col}`, name: f.name, description: f.desc,
+      cost: 30 + col * 8 + row * 2, ppCost: 15 + col * 5 + row * 2,
+      prerequisites: col === 0 ? [] : [`${nationId}_${row}_${col - 1}`],
+      effects: f.effects, position: { col, row },
+      pathLabel: path.label, pathColor: path.color,
+    });
+  }));
+  return result;
+}
+const FOCUSES = {};
+for (const id in COUNTRIES) FOCUSES[id] = generateFocusTree(id);
+
+let audioCtx = null;
+function playSound(type) {
+  if (!settings.soundEnabled) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    if (type === "war") { osc.frequency.value = 200; gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4); osc.start(); osc.stop(audioCtx.currentTime + 0.4); }
+    else if (type === "victory") { osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.3); gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5); osc.start(); osc.stop(audioCtx.currentTime + 0.5); }
+    else if (type === "defeat") { osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(150, audioCtx.currentTime + 0.5); gain.gain.setValueAtTime(0.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.6); osc.start(); osc.stop(audioCtx.currentTime + 0.6); }
+    else if (type === "tech") { osc.frequency.value = 1200; gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15); osc.start(); osc.stop(audioCtx.currentTime + 0.15); }
+  } catch (e) {}
+}
+function toast(text, type) {
+  const c = document.getElementById("toast-container");
+  const t = document.createElement("div");
+  t.className = "toast " + (type || ""); t.textContent = text;
+  c.appendChild(t); setTimeout(() => t.remove(), 3000);
+}
+
+const settings = { defaultSpeed: 1, soundEnabled: true };
+const state = {
+  speed: 1, tick: 0, dayCount: 0, playerNationId: "asteria",
+  selectedProvinceId: null, highlightCountryId: null, selectedFocusId: null,
+  selectedDivisionIds: [], activeTab: "province",
+  logs: [], divisions: [], divisionCounter: 1, gameEnded: false,
+  generalsAssignment: {}, techPoints: {}, techDone: {},
+  warGoals: {}, tradeCooldown: {}, pendingEvent: null,
+  viewBox: { x: 0, y: 0, w: MAP_W, h: MAP_H },
+  diploTab: "neighbor",
+  diploSearch: "",
+};
+
+function initNations() {
+  state.divisions = []; state.logs = []; state.divisionCounter = 1;
+  state.dayCount = 0; state.tick = 0; state.gameEnded = false;
+  state.selectedProvinceId = null; state.selectedDivisionIds = []; state.selectedFocusId = null;
+  state.highlightCountryId = null; state.activeTab = "province";
+  state.generalsAssignment = {}; state.techPoints = {}; state.techDone = {};
+  state.warGoals = {}; state.tradeCooldown = {};
+  state.pendingEvent = null;
+  state.viewBox = { x: 0, y: 0, w: MAP_W, h: MAP_H };
+  state.diploTab = "neighbor";
+  state.diploSearch = "";
+  for (const id in COUNTRIES) {
+    const n = COUNTRIES[id];
+    n.buildQueue = null; n.equipStock = n.equipStockInit || 0; n.infrastructure = 0;
+    n.resourceBonus = { steel: 0, oil: 0 }; n.modifiers = { attack: 1.0, defense: 1.0 };
+    n.unlockedTemplates = ["infantry"]; n.focusCurrent = null; n.focusProgress = 0; n.focusDone = [];
+    n.wars = []; n.nonAggressionPacts = {}; n.surrendered = false;
+    state.techPoints[id] = 0; state.techDone[id] = [];
+    state.warGoals[id] = [];
+    state.tradeCooldown[id] = 0;
+  }
+  // ⚠️ 关键修复：不再重新计算 p.owner（初始已正确设置）
+  PROVINCES.forEach(p => { p.battle = null; });
+}
+function getPlayerNation() { return COUNTRIES[state.playerNationId] || COUNTRIES.asteria; }
+function getDailyBuildPoints(n) { return Math.round(n.civilianFactories * CONFIG.civFactoryBuildPoints * (1 + n.infrastructure * CONFIG.infraBuildSpeedBonus)); }
+function getDailyEquipPoints(n) { return n.militaryFactories * CONFIG.milFactoryEquipPoints; }
+function getDailyResources(n) { let s = n.resourceBonus.steel, o = n.resourceBonus.oil; for (const p of PROVINCES) if (p.owner === n.id) { s += p.resources.steel; o += p.resources.oil; } const b = 1 + n.infrastructure * CONFIG.infraResourceBonus; return { steel: s * b, oil: o * b }; }
+function getDailyManpowerGrowth(n) { return n.manpower * (CONFIG.manpowerGrowthMonthly / 30) * (0.5 + n.stability); }
+function getDailyPoliticalPower(n) { return CONFIG.politicalPowerBase + n.stability * CONFIG.politicalPowerStabilityFactor; }
+
+function calculateSupplyMap() {
+  const supply = {};
+  for (const nid in COUNTRIES) {
+    const n = COUNTRIES[nid]; if (n.surrendered) continue;
+    const cap = getProvince(n.capitalId);
+    if (!cap || cap.owner !== nid) { supply[nid] = {}; continue; }
+    const dist = {}; dist[cap.id] = 0;
+    const queue = [cap.id];
+    while (queue.length) {
+      const cur = queue.shift(), curProv = getProvince(cur);
+      for (const nb of curProv.neighbors) {
+        const nbp = getProvince(nb);
+        if (nbp.owner !== nid || dist[nb] !== undefined) continue;
+        dist[nb] = dist[cur] + 1; queue.push(nb);
+      }
+    }
+    supply[nid] = dist;
+  }
+  return supply;
+}
+function getSupplyLevel(nid, pid) {
+  const dist = calculateSupplyMap()[nid] || {};
+  const d = dist[pid];
+  if (d === undefined) return 0;
+  return Math.max(0.3, 1 - d * CONFIG.supplyDecay);
+}
+function isEncircled(div) {
+  const p = getProvince(div.location);
+  if (!p || p.owner !== div.owner) return false;
+  return p.neighbors.every(nb => { const np = getProvince(nb); return np && np.owner !== div.owner; });
+}
+function getGeneralFor(pid) {
+  const gid = state.generalsAssignment[pid];
+  if (!gid) return null;
+  for (const nid in GENERALS) { const g = GENERALS[nid].find(x => x.id === gid); if (g) return g; }
+  return null;
+}
+function assignGeneral(pid, gid) {
+  for (const p in state.generalsAssignment) {
+    if (state.generalsAssignment[p] === gid && p !== pid) delete state.generalsAssignment[p];
+  }
+  if (gid) state.generalsAssignment[pid] = gid; else delete state.generalsAssignment[pid];
+}
+function predictBattle(atkDivs, defDivs, prov) {
+  if (!atkDivs.length) return null;
+  const atk = COUNTRIES[atkDivs[0].owner], defId = defDivs[0] ? defDivs[0].owner : prov.owner;
+  const def = COUNTRIES[defId], terr = TERRAIN[prov.terrain];
+  const atkGen = getGeneralFor(atkDivs[0].location), defGen = defDivs[0] ? getGeneralFor(defDivs[0].location) : null;
+  const atkGenM = atkGen ? (1 + atkGen.attackMod) : 1, defGenM = defGen ? (1 + defGen.defenseMod) : 1;
+  const atkSup = getSupplyLevel(atkDivs[0].owner, atkDivs[0].location);
+  const defSup = defDivs.length ? getSupplyLevel(defId, defDivs[0].location) : 1;
+  const atkP = atkDivs.reduce((s, d) => s + DIVISION_TEMPLATES[d.templateId].attack * d.equipment, 0) * (atk ? atk.modifiers.attack : 1) * atkGenM * atkSup;
+  const defP = defDivs.reduce((s, d) => s + DIVISION_TEMPLATES[d.templateId].defense * d.equipment, 0) * (def ? def.modifiers.defense : 1) * defGenM * defSup;
+  const atkE = atkP * terr.atkMod, defE = defP * terr.defMod;
+  return {
+    atkPower: Math.round(atkE), defPower: Math.round(defE),
+    ratio: defE > 0 ? atkE / defE : 999,
+    daysEstimate: defDivs.length ? Math.ceil((defDivs.reduce((s, d) => s + d.organization, 0) * 2) / Math.max(1, atkE * CONFIG.battleDamageFactor / 10)) : 1,
+  };
+}
+function combatPower(divs) {
+  return divs.reduce((s, d) => {
+    const t = DIVISION_TEMPLATES[d.templateId];
+    return s + (t.attack * 1.5 + t.defense) * d.equipment * Math.max(0.3, d.organization / t.maxOrganization);
+  }, 0);
+}
+
+function getFocusStatus(n, f) {
+  if (n.focusDone.includes(f.id)) return "done";
+  if (n.focusCurrent === f.id) return "active";
+  if (!f.prerequisites.every(id => n.focusDone.includes(id))) return "locked";
+  if (n.politicalPower < f.ppCost) return "poor";
+  return "available";
+}
+function getFocuses(id) { return FOCUSES[id] || []; }
+function startFocus(fid) {
+  const n = getPlayerNation(), f = getFocuses(n.id).find(x => x.id === fid);
+  if (!f || n.focusDone.includes(fid) || n.focusCurrent) return;
+  if (!f.prerequisites.every(id => n.focusDone.includes(id))) return;
+  if (n.politicalPower < f.ppCost) return;
+  n.politicalPower -= f.ppCost; n.focusCurrent = fid; n.focusProgress = 0;
+  log(`开始国策：${f.name}（消耗政治 ${f.ppCost}）`);
+  renderFocusTree(); renderFocusDetail(); renderFocusSummary(); renderTopbar();
+}
+function advanceFocus(n) {
+  if (!n.focusCurrent) return;
+  const f = getFocuses(n.id).find(x => x.id === n.focusCurrent);
+  if (!f) { n.focusCurrent = null; return; }
+  n.focusProgress += 1;
+  if (n.focusProgress >= f.cost) completeFocus(n, f);
+}
+function completeFocus(n, f) {
+  n.focusDone.push(f.id); n.focusCurrent = null; n.focusProgress = 0;
+  applyFocusEffects(n, f); log(`[${n.name}] 国策完成：${f.name}`, "good");
+  if (n.id === state.playerNationId) { renderAll(); toast(`国策完成：${f.name}`, "good"); playSound("tech"); }
+}
+function applyFocusEffects(n, f) {
+  for (const e of f.effects) {
+    switch (e.type) {
+      case "ADD_CIV_FACTORY": n.civilianFactories += e.value; break;
+      case "ADD_MIL_FACTORY": n.militaryFactories += e.value; break;
+      case "ADD_RESOURCE": n.resourceBonus.steel += (e.steel || 0); n.resourceBonus.oil += (e.oil || 0); break;
+      case "ADD_STABILITY": n.stability = clamp(n.stability + e.value, 0, 1); break;
+      case "ADD_WAR_SUPPORT": n.warSupport = clamp(n.warSupport + e.value, 0, 1); break;
+      case "UNLOCK_TEMPLATE": if (!n.unlockedTemplates.includes(e.templateId)) n.unlockedTemplates.push(e.templateId); break;
+      case "ADD_MANPOWER": n.manpower += e.value; break;
+      case "ADD_MODIFIER": if (n.modifiers[e.key] !== undefined) n.modifiers[e.key] += e.value; break;
+      case "ADD_VICTORY_POINT": { const p = getProvince(e.provinceId); if (p) p.victoryPoint += e.value; break; }
+      case "ADD_PP": n.politicalPower += e.value; break;
+      case "ADD_TECH_POINTS": state.techPoints[n.id] = (state.techPoints[n.id] || 0) + e.value; break;
+    }
+  }
+}
+function describeEffect(e) {
+  switch (e.type) {
+    case "ADD_CIV_FACTORY": return `民用+${e.value}`;
+    case "ADD_MIL_FACTORY": return `军用+${e.value}`;
+    case "ADD_RESOURCE": { const p = []; if (e.steel) p.push(`钢+${e.steel}`); if (e.oil) p.push(`油+${e.oil}`); return p.join("，"); }
+    case "ADD_STABILITY": return `稳定+${(e.value*100).toFixed(0)}%`;
+    case "ADD_WAR_SUPPORT": return `战支+${(e.value*100).toFixed(0)}%`;
+    case "UNLOCK_TEMPLATE": { const t = DIVISION_TEMPLATES[e.templateId]; return `解锁「${t ? t.name : e.templateId}」`; }
+    case "ADD_MANPOWER": return `人力+${fmtNum(e.value)}`;
+    case "ADD_MODIFIER": { const m = { attack: "攻", defense: "防" }; return `${m[e.key] || e.key}+${(e.value*100).toFixed(0)}%`; }
+    case "ADD_PP": return `政治+${e.value}`;
+    case "ADD_TECH_POINTS": return `科研+${e.value}`;
+    case "ADD_VICTORY_POINT": return `胜利点+${e.value}`;
+  }
+  return e.type;
+}
+
+function createDivision(tid, oid, loc) { const t = DIVISION_TEMPLATES[tid]; if (!t) return null; return { id: "div_" + (state.divisionCounter++), templateId: tid, owner: oid, location: loc, organization: t.maxOrganization, equipment: 1.0 }; }
+function recruitDivision(tid, pid, ownerId) {
+  ownerId = ownerId || state.playerNationId;
+  const n = COUNTRIES[ownerId], t = DIVISION_TEMPLATES[tid], p = getProvince(pid);
+  if (!t || !p || !n) return { ok: false, reason: "无效" };
+  if (p.owner !== ownerId) return { ok: false, reason: "非己方" };
+  if (p.battle) return { ok: false, reason: "战斗中" };
+  if (!n.unlockedTemplates.includes(tid)) return { ok: false, reason: "未解锁" };
+  if (n.equipStock < t.equipmentCost) return { ok: false, reason: "装备不足" };
+  if (n.manpower < t.manpowerCost) return { ok: false, reason: "人力不足" };
+  n.equipStock -= t.equipmentCost; n.manpower -= t.manpowerCost;
+  state.divisions.push(createDivision(tid, ownerId, pid));
+  return { ok: true };
+}
+function getDivisionsAt(pid) { return state.divisions.filter(d => d.location === pid); }
+function isDivisionSelectable(d) {
+  if (d.owner !== state.playerNationId || d.organization <= 0) return false;
+  const p = getProvince(d.location);
+  if (p && p.battle && (p.battle.attackerDivisions.includes(d) || p.battle.defenderDivisions.includes(d))) return false;
+  return true;
+}
+function toggleDivisionSelection(did) {
+  const d = state.divisions.find(x => x.id === did); if (!d || !isDivisionSelectable(d)) return;
+  const i = state.selectedDivisionIds.indexOf(did);
+  if (i >= 0) state.selectedDivisionIds.splice(i, 1); else state.selectedDivisionIds.push(did);
+  if (state.selectedProvinceId) renderProvinceDetail(state.selectedProvinceId);
+}
+function selectAllDivisionsInProvince(pid) {
+  state.selectedDivisionIds = getDivisionsAt(pid).filter(isDivisionSelectable).map(d => d.id);
+  if (state.selectedProvinceId) renderProvinceDetail(state.selectedProvinceId);
+}
+function clearDivisionSelection() { state.selectedDivisionIds = []; if (state.selectedProvinceId) renderProvinceDetail(state.selectedProvinceId); }
+function moveDivisions(dids, tid) {
+  const t = getProvince(tid); if (!t) return { ok: false, reason: "无效目标" };
+  const divs = dids.map(id => state.divisions.find(d => d.id === id)).filter(Boolean);
+  if (!divs.length) return { ok: false, reason: "无选中" };
+  const op = getProvince(divs[0].location);
+  if (!op.neighbors.includes(tid)) return { ok: false, reason: "不相邻" };
+  for (const d of divs) { if (d.location !== op.id) return { ok: false, reason: "不同省" }; if (d.owner !== divs[0].owner) return { ok: false, reason: "不同国" }; if (d.organization <= 0) return { ok: false, reason: "组织度不足" }; }
+  if (t.owner !== divs[0].owner) return attackDivisions(dids, tid);
+  if (t.battle) return { ok: false, reason: "战斗中" };
+  divs.forEach(d => { d.location = tid; });
+  log(`${divs.length} 师从 ${op.name} 移动到 ${t.name}`); renderAll(); return { ok: true };
+}
+function attackDivisions(dids, tid) {
+  const t = getProvince(tid); if (!t) return { ok: false, reason: "无效目标" };
+  if (t.battle) return { ok: false, reason: "已在战斗中" };
+  const divs = dids.map(id => state.divisions.find(d => d.id === id)).filter(Boolean);
+  if (!divs.length) return { ok: false, reason: "无选中" };
+  const op = getProvince(divs[0].location);
+  if (!op.neighbors.includes(tid)) return { ok: false, reason: "不相邻" };
+  if (t.owner === divs[0].owner) return { ok: false, reason: "己方" };
+  for (const d of divs) { if (d.location !== op.id) return { ok: false, reason: "不同省" }; if (d.owner !== divs[0].owner) return { ok: false, reason: "不同国" }; if (d.organization <= 0) return { ok: false, reason: "组织度不足" }; }
+  const owner = divs[0].owner, defId = t.owner;
+  const defDivs = state.divisions.filter(d => d.location === tid && d.owner === defId && d.organization > 0);
+  if (!defDivs.length) {
+    const old = t.owner; t.owner = owner; divs.forEach(d => { d.location = tid; });
+    log(`${COUNTRIES[owner].name} 占领 ${t.name}（无防守）`, "war");
+    checkNationSurrender(old); checkGameEnd(); renderAll(); playSound("victory"); return { ok: true };
+  }
+  t.battle = { attackerNation: owner, defenderNation: defId, attackerDivisions: divs, defenderDivisions: defDivs, originProvince: op.id, days: 0 };
+  log(`⚔ ${COUNTRIES[owner].name} 以 ${divs.length} 师进攻 ${t.name}`, "war"); renderAll(); playSound("war"); return { ok: true };
+}
+function attackDivision(did, tid) { return attackDivisions([did], tid); }
+function resolveBattles() {
+  for (const pid in PROVINCE_INDEX) {
+    const p = PROVINCE_INDEX[pid], b = p.battle; if (!b) continue;
+    b.attackerDivisions = b.attackerDivisions.filter(d => d.organization > 0);
+    b.defenderDivisions = b.defenderDivisions.filter(d => d.organization > 0);
+    if (!b.defenderDivisions.length) { battleVictory(p, b); continue; }
+    if (!b.attackerDivisions.length) { battleDefeat(p, b); continue; }
+    const terr = TERRAIN[p.terrain];
+    const atkGen = getGeneralFor(b.attackerDivisions[0].location), defGen = getGeneralFor(b.defenderDivisions[0].location);
+    const atkGenM = atkGen ? (1 + atkGen.attackMod) : 1, defGenM = defGen ? (1 + defGen.defenseMod) : 1;
+    const atkSup = getSupplyLevel(b.attackerNation, b.attackerDivisions[0].location);
+    const defSup = getSupplyLevel(b.defenderNation, b.defenderDivisions[0].location);
+    const atkMod = COUNTRIES[b.attackerNation]?.modifiers.attack || 1;
+    const defMod = COUNTRIES[b.defenderNation]?.modifiers.defense || 1;
+    const atkP = b.attackerDivisions.reduce((s, d) => s + DIVISION_TEMPLATES[d.templateId].attack * d.equipment, 0) * atkMod * atkGenM * atkSup;
+    const defP = b.defenderDivisions.reduce((s, d) => s + DIVISION_TEMPLATES[d.templateId].defense * d.equipment, 0) * defMod * defGenM * defSup;
+    const r1 = CONFIG.battleRandomMin + Math.random() * (CONFIG.battleRandomMax - CONFIG.battleRandomMin);
+    const r2 = CONFIG.battleRandomMin + Math.random() * (CONFIG.battleRandomMax - CONFIG.battleRandomMin);
+    const dmgDef = atkP * terr.atkMod * r1 * CONFIG.battleDamageFactor;
+    const dmgAtk = defP * terr.defMod * r2 * CONFIG.battleDamageFactor;
+    const defLoss = dmgDef / b.defenderDivisions.length, atkLoss = dmgAtk / b.attackerDivisions.length;
+    b.defenderDivisions.forEach(d => d.organization = Math.max(0, d.organization - defLoss));
+    b.attackerDivisions.forEach(d => d.organization = Math.max(0, d.organization - atkLoss));
+    b.days += 1;
+    b.attackerDivisions = b.attackerDivisions.filter(d => d.organization > 0);
+    b.defenderDivisions = b.defenderDivisions.filter(d => d.organization > 0);
+    if (!b.defenderDivisions.length) battleVictory(p, b);
+    else if (!b.attackerDivisions.length) battleDefeat(p, b);
+  }
+}
+function battleVictory(p, b) {
+  const atk = b.attackerNation, def = b.defenderNation;
+  b.defenderDivisions.forEach(d => {
+    const ret = findRetreatProvince(d.location, d.owner);
+    if (ret) { d.location = ret.id; d.organization = Math.max(d.organization, CONFIG.retreatOrgFloor); }
+    else { const i = state.divisions.indexOf(d); if (i >= 0) state.divisions.splice(i, 1); log(`${DIVISION_TEMPLATES[d.templateId].name} 被歼灭`, "war"); }
+  });
+  b.attackerDivisions.forEach(d => { d.location = p.id; });
+  p.owner = atk; p.battle = null;
+  log(`${COUNTRIES[atk].name} 占领 ${p.name}`, "war");
+  checkNationSurrender(def); checkGameEnd();
+}
+function battleDefeat(p, b) {
+  b.attackerDivisions.forEach(d => { d.location = b.originProvince; d.organization = Math.max(d.organization, CONFIG.retreatOrgFloor); });
+  p.battle = null; log(`${COUNTRIES[b.attackerNation].name} 进攻 ${p.name} 失败`, "war");
+}
+function findRetreatProvince(fid, nid) {
+  const f = getProvince(fid); if (!f) return null;
+  const c = f.neighbors.map(id => getProvince(id)).filter(p => p && p.owner === nid && !p.battle);
+  return c.length ? c[Math.floor(Math.random() * c.length)] : null;
+}
+function checkNationSurrender(nid) {
+  const n = COUNTRIES[nid]; if (!n || n.surrendered) return;
+  const cap = getProvince(n.capitalId); if (!cap || cap.owner === nid) return;
+  const occ = cap.owner; n.surrendered = true;
+  PROVINCES.forEach(p => { if (p.owner === nid) p.owner = occ; });
+  state.divisions = state.divisions.filter(d => d.owner !== nid);
+  n.wars.forEach(eid => { const e = COUNTRIES[eid]; if (e) e.wars = e.wars.filter(x => x !== nid); });
+  n.wars = [];
+  log(`⚑ ${n.name} 首都失守，宣告投降！所有领土归 ${COUNTRIES[occ].name}`, "war");
+  if (nid === state.playerNationId || occ === state.playerNationId) toast(`${n.name} 投降！`, "war");
+}
+function getAdjacentNations(nid) {
+  const r = new Set();
+  for (const p of PROVINCES) { if (p.owner !== nid) continue; for (const nb of p.neighbors) { const n = getProvince(nb); if (n && n.owner !== nid) r.add(n.owner); } }
+  return [...r];
+}
+function hasActivePact(a, b) { const e = COUNTRIES[a].nonAggressionPacts[b]; return !!(e && e > state.dayCount); }
+function declareWar(a, b, goals) {
+  const A = COUNTRIES[a], B = COUNTRIES[b];
+  if (!A || !B) return { ok: false, reason: "无效" };
+  if (A.wars.includes(b)) return { ok: false, reason: "已战争" };
+  if (A.surrendered || B.surrendered) return { ok: false, reason: "已投降" };
+  if (A.politicalPower < CONFIG.declareWarCost) return { ok: false, reason: "政治不足" };
+  A.politicalPower -= CONFIG.declareWarCost; A.wars.push(b); B.wars.push(a);
+  delete A.nonAggressionPacts[b]; delete B.nonAggressionPacts[a];
+  A.relations[b] = -100; B.relations[a] = -100;
+  if (goals) state.warGoals[a] = goals;
+  log(`⚔ ${A.name} 对 ${B.name} 宣战！`, "war"); toast(`${A.name} 宣战 ${B.name}`, "war"); playSound("war"); return { ok: true };
+}
+function makePact(a, b) {
+  const n = COUNTRIES[a]; if (n.politicalPower < CONFIG.nonAggressionCost) return { ok: false, reason: "政治不足" };
+  n.politicalPower -= CONFIG.nonAggressionCost; const e = state.dayCount + CONFIG.nonAggressionDuration;
+  n.nonAggressionPacts[b] = e; COUNTRIES[b].nonAggressionPacts[a] = e;
+  log(`${n.name} 与 ${COUNTRIES[b].name} 签订互不侵犯`, "diplo"); return { ok: true };
+}
+function improveRelations(a, b) {
+  const n = COUNTRIES[a]; if (n.politicalPower < CONFIG.improveRelationsCost) return { ok: false, reason: "政治不足" };
+  n.politicalPower -= CONFIG.improveRelationsCost;
+  n.relations[b] = Math.min(100, (n.relations[b] || 0) + CONFIG.improveRelationsAmount);
+  COUNTRIES[b].relations[a] = Math.min(100, (COUNTRIES[b].relations[a] || 0) + CONFIG.improveRelationsAmount);
+  log(`${n.name} 与 ${COUNTRIES[b].name} 关系改善`, "diplo"); return { ok: true };
+}
+function getNationPower(n) { if (!n) return 0; const pc = PROVINCES.filter(p => p.owner === n.id).length; const dc = state.divisions.filter(d => d.owner === n.id).length; return pc * 10 + dc * 5 + n.militaryFactories * 3; }
+function canOfferPeace(nid, eid) {
+  const goals = state.warGoals[nid] || [];
+  const enemy = COUNTRIES[eid];
+  if (!enemy || enemy.surrendered) return false;
+  const allCaptured = goals.length > 0 && goals.every(gid => { const p = getProvince(gid); return p && p.owner === nid; });
+  const myPower = getNationPower(COUNTRIES[nid]);
+  const enemyPower = getNationPower(enemy);
+  if (allCaptured && myPower >= enemyPower * 1.2) return true;
+  if (myPower >= enemyPower * 2) return true;
+  return false;
+}
+function offerPeace(attackerId, defenderId, goals) {
+  const defender = COUNTRIES[defenderId];
+  goals.forEach(gid => { const p = getProvince(gid); if (p && p.owner === defenderId) p.owner = attackerId; });
+  const A = COUNTRIES[attackerId];
+  A.wars = A.wars.filter(x => x !== defenderId);
+  defender.wars = defender.wars.filter(x => x !== attackerId);
+  state.warGoals[attackerId] = [];
+  A.politicalPower += 20;
+  log(`☮ ${A.name} 与 ${defender.name} 签订和平协议`, "diplo");
+}
+
+function aiBuild(n) {
+  if (n.buildQueue) return;
+  const atWar = n.wars.length > 0;
+  const lowSteel = n.resources.steel < 100;
+  const lowEquip = n.equipStock < 50;
+  const factoryRatio = n.militaryFactories / Math.max(1, n.civilianFactories);
+  let type = "milFactory";
+  if (lowSteel && !atWar) type = "infrastructure";
+  else if (lowEquip || factoryRatio < 0.5) type = "milFactory";
+  else if (!atWar && n.civilianFactories < CONFIG.aiMaxCivFactories) type = "civFactory";
+  else if (atWar) type = "milFactory";
+  const def = CONFIG.constructions[type];
+  if (n.resources.steel < def.steelCost) return;
+  n.resources.steel -= def.steelCost;
+  n.buildQueue = { type, name: def.name, cost: def.cost, progress: 0 };
+}
+function aiRecruit(n) {
+  const avail = n.unlockedTemplates.map(id => DIVISION_TEMPLATES[id])
+    .filter(t => n.equipStock >= t.equipmentCost * 1.3 && n.manpower >= t.manpowerCost);
+  if (!avail.length) return;
+  const atWar = n.wars.length > 0;
+  avail.sort((a, b) => {
+    if (atWar) { const sa = (a.attack * 2 + a.defense) / a.equipmentCost; const sb = (b.attack * 2 + b.defense) / b.equipmentCost; return sb - sa; }
+    return a.equipmentCost - b.equipmentCost;
+  });
+  const t = avail[0];
+  const prov = findAIDeployProvince(n);
+  if (prov) recruitDivision(t.id, prov.id, n.id);
+}
+function findAIDeployProvince(n) {
+  const en = n.wars; const front = [], border = [], other = [];
+  for (const p of PROVINCES) {
+    if (p.owner !== n.id || p.battle) continue;
+    const he = p.neighbors.some(nb => { const t = getProvince(nb); return t && en.includes(t.owner); });
+    if (he) { front.push(p); continue; }
+    const hf = p.neighbors.some(nb => { const t = getProvince(nb); return t && t.owner !== n.id; });
+    if (hf) border.push(p); else other.push(p);
+  }
+  return front[0] || border[0] || other[0] || null;
+}
+function aiRetreatCheck(n) {
+  for (const div of state.divisions) {
+    if (div.owner !== n.id || div.organization > 30) continue;
+    const prov = getProvince(div.location);
+    if (!prov || prov.battle) continue;
+    const enemyNearby = prov.neighbors.map(getProvince)
+      .filter(p => p && n.wars.includes(p.owner))
+      .reduce((s, p) => s + combatPower(state.divisions.filter(d => d.location === p.id && d.owner === p.owner && d.organization > 0)), 0);
+    if (enemyNearby > combatPower([div]) * 2) {
+      const backProv = prov.neighbors.map(getProvince)
+        .filter(p => p && p.owner === n.id && !p.battle &&
+          !p.neighbors.some(nb => { const np = getProvince(nb); return np && n.wars.includes(np.owner); }))[0];
+      if (backProv) div.location = backProv.id;
+    }
+  }
+}
+function aiFrontLines(n, divs) {
+  const en = n.wars; if (!en.length) return;
+  const borderProvs = PROVINCES.filter(p => p.owner === n.id && p.neighbors.some(nb => {
+    const np = getProvince(nb); return np && en.includes(np.owner);
+  }));
+  for (const bp of borderProvs) {
+    if (divs.filter(d => d.location === bp.id).length >= 1) continue;
+    const movers = divs.filter(d => { const dp = getProvince(d.location); return dp && dp.neighbors.includes(bp.id); });
+    if (movers.length) movers[0].location = bp.id;
+  }
+}
+function aiConcentratedAttack(n) {
+  const en = n.wars; if (!en.length) return;
+  const options = [];
+  for (const p of PROVINCES) {
+    if (p.owner !== n.id || p.battle) continue;
+    const atkDivs = state.divisions.filter(d => d.location === p.id && d.owner === n.id && d.organization > 0);
+    if (!atkDivs.length) continue;
+    for (const tid of p.neighbors) {
+      const t = getProvince(tid);
+      if (!t || !en.includes(t.owner) || t.battle) continue;
+      const defDivs = state.divisions.filter(d => d.location === tid && d.owner === t.owner && d.organization > 0);
+      const atkP = combatPower(atkDivs) * TERRAIN[p.terrain].atkMod;
+      const defP = combatPower(defDivs) * TERRAIN[t.terrain].defMod + 1;
+      const ratio = atkP / defP;
+      if (ratio >= 1.3 || defP < 20) options.push({ from: p, to: t, atkDivs, ratio, value: t.victoryPoint });
+    }
+  }
+  if (!options.length) return;
+  options.sort((a, b) => (b.ratio + b.value * 0.2) - (a.ratio + a.value * 0.2));
+  const main = options[0];
+  attackDivisions(main.atkDivs.map(d => d.id), main.to.id);
+  const battle = main.to.battle;
+  if (battle && battle.attackerNation === n.id) {
+    for (const p of PROVINCES) {
+      if (p.owner !== n.id || p.id === main.from.id || p.battle) continue;
+      if (!p.neighbors.includes(main.to.id)) continue;
+      const aidDivs = state.divisions.filter(d => d.location === p.id && d.owner === n.id && d.organization > 0);
+      for (const d of aidDivs) if (!battle.attackerDivisions.includes(d)) battle.attackerDivisions.push(d);
+    }
+  }
+}
+function aiSeekPeace(n) {
+  if (!n.wars.length) return;
+  const myDivs = state.divisions.filter(d => d.owner === n.id);
+  const totalOrg = myDivs.reduce((s, d) => s + d.organization, 0);
+  const maxOrg = myDivs.reduce((s, d) => s + DIVISION_TEMPLATES[d.templateId].maxOrganization, 0);
+  if (maxOrg === 0) return;
+  if (totalOrg / maxOrg < 0.3) {
+    n.wars.forEach(eid => {
+      const enemy = COUNTRIES[eid];
+      if (enemy.surrendered) return;
+      if (n.politicalPower >= 30) {
+        n.politicalPower -= 30;
+        n.wars = n.wars.filter(x => x !== eid);
+        enemy.wars = enemy.wars.filter(x => x !== n.id);
+        log(`[${n.name}] 与 ${enemy.name} 停战`, "diplo");
+      }
+    });
+  }
+}
+function aiMilitary(n) {
+  const divs = state.divisions.filter(d => d.owner === n.id && d.organization > 0);
+  aiRetreatCheck(n);
+  aiFrontLines(n, divs);
+  if (n.wars.length > 0) aiConcentratedAttack(n);
+  aiSeekPeace(n);
+}
+function aiDiplomacy(n) {
+  if (n.wars.length > 0) return;
+  if (n.politicalPower < CONFIG.declareWarCost) return;
+  if (n.warSupport < 0.30) return;
+  if (n.manpower < 20000) return;
+  if (state.divisions.filter(d => d.owner === n.id).length < 2) return;
+  const neighbors = getAdjacentNations(n.id); if (!neighbors.length) return;
+  const myPower = getNationPower(n);
+  const options = [];
+  for (const nid of neighbors) {
+    const enemy = COUNTRIES[nid];
+    if (!enemy || enemy.surrendered || hasActivePact(n.id, nid)) continue;
+    const enemyPower = getNationPower(enemy);
+    const isWeak = myPower >= enemyPower * 1.3;
+    const isVulnerable = enemy.wars.length > 0;
+    const isPlayer = nid === state.playerNationId;
+    const neighborVP = PROVINCES.filter(p => p.owner === nid && p.neighbors.some(nb => {
+      const np = getProvince(nb); return np && np.owner === n.id;
+    })).reduce((s, p) => s + p.victoryPoint, 0);
+    let score = 0;
+    if (isWeak) score += 40;
+    if (isVulnerable) score += 30;
+    if (isPlayer) score += 15;
+    score += neighborVP * 3;
+    if (isWeak && myPower >= enemyPower * 1.2) options.push({ id: nid, score });
+  }
+  if (!options.length) return;
+  options.sort((a, b) => b.score - a.score);
+  const target = options[0];
+  const myProvs = PROVINCES.filter(p => p.owner === n.id);
+  const enemyProvs = PROVINCES.filter(p => p.owner === target.id);
+  const goals = [];
+  for (const mp of myProvs) for (const ep of enemyProvs) if (mp.neighbors.includes(ep.id) && !goals.includes(ep.id)) {
+    goals.push(ep.id); if (goals.length >= 3) break;
+  }
+  declareWar(n.id, target.id, goals);
+}
+function aiTech(n) {
+  const pts = state.techPoints[n.id] || 0;
+  const done = state.techDone[n.id] || [];
+  const avail = TECHS.filter(t => !done.includes(t.id) && (!t.requires || t.requires.every(r => done.includes(r))));
+  if (!avail.length) return;
+  const priority = (t) => {
+    let p = 0;
+    for (const e of t.effects) {
+      if (e.type === "ADD_MODIFIER") p += 100;
+      else if (e.type === "ADD_MIL_FACTORY") p += 80;
+      else if (e.type === "ADD_CIV_FACTORY") p += 60;
+      else if (e.type === "ADD_RESOURCE") p += 40;
+    }
+    return p - t.cost * 0.2;
+  };
+  avail.sort((a, b) => priority(b) - priority(a));
+  if (pts >= avail[0].cost) {
+    state.techPoints[n.id] -= avail[0].cost;
+    state.techDone[n.id].push(avail[0].id);
+    applyFocusEffects(n, { effects: avail[0].effects });
+  }
+}
+function aiFocus(n) {
+  if (n.focusCurrent || n.politicalPower < 15) return;
+  if (state.dayCount % CONFIG.aiFocusInterval !== 0) return;
+  const focuses = getFocuses(n.id);
+  const available = focuses.filter(f => !n.focusDone.includes(f.id) && f.prerequisites.every(p => n.focusDone.includes(p)) && n.politicalPower >= f.ppCost);
+  if (!available.length) return;
+  const score = (f) => {
+    let s = 10;
+    for (const e of f.effects) {
+      if (e.type === "UNLOCK_TEMPLATE") { const t = DIVISION_TEMPLATES[e.templateId]; s += 300 + (t ? (t.attack + t.defense) * 2 : 0); }
+      else if (e.type === "ADD_MIL_FACTORY") s += 60 * e.value;
+      else if (e.type === "ADD_CIV_FACTORY") s += 50 * e.value;
+      else if (e.type === "ADD_RESOURCE") s += 40 * ((e.steel || 0) + (e.oil || 0));
+      else if (e.type === "ADD_MODIFIER") s += 30;
+      else if (e.type === "ADD_MANPOWER") s += 25;
+    }
+    return s / (1 + f.ppCost * 0.15 + f.cost * 0.03);
+  };
+  available.sort((a, b) => score(b) - score(a));
+  const f = available[0];
+  n.politicalPower -= f.ppCost; n.focusCurrent = f.id; n.focusProgress = 0;
+}
+function aiEvaluate(n) {
+  if (n.surrendered) return;
+  aiBuild(n); aiRecruit(n); aiFocus(n); aiTech(n);
+  if (state.dayCount % CONFIG.aiStrategicInterval === 0) { aiMilitary(n); aiDiplomacy(n); }
+}
+function dailySettlement() {
+  for (const id in COUNTRIES) {
+    const n = COUNTRIES[id]; if (n.surrendered) continue;
+    if (n.buildQueue) { n.buildQueue.progress += getDailyBuildPoints(n); if (n.buildQueue.progress >= n.buildQueue.cost) { completeConstruction(n); if (id === state.playerNationId) toast(`建造完成`, "good"); } }
+    const r = getDailyResources(n);
+    n.resources.steel += r.steel; n.resources.oil += r.oil;
+    n.manpower += getDailyManpowerGrowth(n); n.politicalPower += getDailyPoliticalPower(n);
+    advanceFocus(n);
+    if (state.dayCount % 30 === 0) state.techPoints[id] = (state.techPoints[id] || 0) + CONFIG.techPointsPerMonth;
+  }
+  resolveBattles();
+  const inBattle = new Set();
+  PROVINCES.forEach(p => { if (p.battle) { p.battle.attackerDivisions.forEach(d => inBattle.add(d.id)); p.battle.defenderDivisions.forEach(d => inBattle.add(d.id)); } });
+  for (const id in COUNTRIES) {
+    const n = COUNTRIES[id]; if (n.surrendered) continue;
+    n.equipStock += getDailyEquipPoints(n);
+    const ds = state.divisions.filter(d => d.owner === id); if (!ds.length) continue;
+    const tm = ds.reduce((s, d) => s + DIVISION_TEMPLATES[d.templateId].maintenance, 0);
+    if (n.equipStock >= tm) { n.equipStock -= tm; ds.forEach(d => { d.equipment = Math.min(1, d.equipment + CONFIG.equipmentRecoveryPerDay); if (!inBattle.has(d.id)) { const t = DIVISION_TEMPLATES[d.templateId]; d.organization = Math.min(t.maxOrganization, d.organization + CONFIG.orgRecoveryPerDay); } }); }
+    else { n.equipStock = 0; ds.forEach(d => { d.equipment = Math.max(CONFIG.equipmentFloor, d.equipment - CONFIG.equipmentDecayPerDay); }); }
+    ds.forEach(d => { if (isEncircled(d) && !inBattle.has(d.id)) { const t = DIVISION_TEMPLATES[d.templateId]; d.organization = Math.max(0, d.organization - 5); } });
+  }
+  for (const id in COUNTRIES) if (id !== state.playerNationId) aiEvaluate(COUNTRIES[id]);
+  if (state.dayCount % CONFIG.eventCheckInterval === 0 && !state.pendingEvent && !state.gameEnded) {
+    if (Math.random() < CONFIG.eventChance) triggerEvent();
+  }
+  checkGameEnd();
+  if (state.dayCount % 30 === 0 && !state.gameEnded) saveGame(true);
+  const valid = new Set(state.divisions.map(d => d.id));
+  state.selectedDivisionIds = state.selectedDivisionIds.filter(id => valid.has(id));
+  renderAll();
+}
+function completeConstruction(n) {
+  const q = n.buildQueue; if (!q) return;
+  if (q.type === "civFactory") n.civilianFactories += 1;
+  else if (q.type === "milFactory") n.militaryFactories += 1;
+  else if (q.type === "infrastructure") n.infrastructure += 1;
+  log(`[${n.name}] 建造完成：${q.name}`, "good"); n.buildQueue = null;
+}
+function triggerEvent() {
+  if (!EVENTS.length) return;
+  const evt = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+  state.pendingEvent = evt; state.speed = 0;
+  if (clockTimer) { clearTimeout(clockTimer); clockTimer = null; }
+  document.getElementById("event-title").textContent = "【事件】" + evt.title;
+  document.getElementById("event-desc").textContent = evt.desc;
+  const optContainer = document.getElementById("event-options");
+  optContainer.innerHTML = "";
+  evt.options.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.className = "event-option";
+    btn.innerHTML = `${opt.text}<span class="opt-effect">${opt.effectText || opt.effects.map(e => describeEffect(e)).join("，")}</span>`;
+    btn.onclick = () => {
+      const n = getPlayerNation();
+      opt.effects.forEach(e => applyFocusEffects(n, { effects: [e] }));
+      state.pendingEvent = null;
+      document.getElementById("event-overlay").classList.add("hidden");
+      setSpeed(1); renderAll(); renderTopbar();
+      toast(`事件解决`, "info");
+    };
+    optContainer.appendChild(btn);
+  });
+  document.getElementById("event-overlay").classList.remove("hidden");
+}
+function checkGameEnd() {
+  if (state.gameEnded) return;
+  const pl = getPlayerNation();
+  const cap = getProvince(pl.capitalId);
+  if (!cap || cap.owner !== pl.id || pl.surrendered) { endGame("defeat", "首都被攻陷。"); return; }
+  const totalVP = PROVINCES.reduce((s, p) => s + p.victoryPoint, 0);
+  const myVP = PROVINCES.filter(p => p.owner === pl.id).reduce((s, p) => s + p.victoryPoint, 0);
+  if (myVP / totalVP >= CONFIG.victoryVPThreshold) { endGame("victory", `控制 ${(myVP/totalVP*100).toFixed(0)}% 胜利点，胜利！`); return; }
+  const aliveOthers = Object.values(COUNTRIES).filter(c => c.id !== pl.id && !c.surrendered);
+  if (!aliveOthers.length) endGame("victory", "所有其他国家都已投降！");
+}
+function endGame(result, reason) {
+  if (state.gameEnded) return;
+  state.gameEnded = true; state.speed = 0;
+  if (clockTimer) { clearTimeout(clockTimer); clockTimer = null; }
+  const pl = getPlayerNation();
+  const totalVP = PROVINCES.reduce((s, p) => s + p.victoryPoint, 0);
+  const myVP = PROVINCES.filter(p => p.owner === pl.id).reduce((s, p) => s + p.victoryPoint, 0);
+  const dc = state.divisions.filter(d => d.owner === pl.id).length;
+  document.getElementById("endgame-title").textContent = result === "victory" ? "胜 利" : "失 败";
+  document.getElementById("endgame-title").className = result;
+  document.getElementById("endgame-reason").textContent = reason;
+  document.getElementById("endgame-stats").innerHTML = `
+    <div class="es-item"><div class="es-k">控制胜利点</div><div class="es-v gold">${myVP} / ${totalVP}</div></div>
+    <div class="es-item"><div class="es-k">控制省份</div><div class="es-v">${PROVINCES.filter(p => p.owner === pl.id).length}</div></div>
+    <div class="es-item"><div class="es-k">现存师</div><div class="es-v">${dc}</div></div>
+    <div class="es-item"><div class="es-k">游戏天数</div><div class="es-v">${state.dayCount}</div></div>
+  `;
+  document.getElementById("endgame-overlay").classList.remove("hidden");
+  renderTopbar();
+  playSound(result === "victory" ? "victory" : "defeat");
+}
+function svgEl(tag, attrs) { const el = document.createElementNS(SVG_NS, tag); if (attrs) for (const k in attrs) el.setAttribute(k, attrs[k]); return el; }
+function hexPoints(cx, cy, r) { const pts = []; for (let i = 0; i < 6; i++) { const a = (Math.PI / 180) * (60 * i); pts.push((cx + r * Math.cos(a)).toFixed(2) + "," + (cy + r * Math.sin(a)).toFixed(2)); } return pts.join(" "); }
+function fmtNum(n) { if (n >= 1e6) return (n / 1e6).toFixed(2) + "M"; if (n >= 1e3) return (n / 1e3).toFixed(1) + "K"; return String(n); }
+function formatDate(d) { const dt = new Date(1936, 0, 1); dt.setDate(dt.getDate() + d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function loadSettings() { try { const r = localStorage.getItem(SETTINGS_KEY); if (r) { const p = JSON.parse(r); if (typeof p.defaultSpeed === "number") settings.defaultSpeed = p.defaultSpeed; if (typeof p.soundEnabled === "boolean") settings.soundEnabled = p.soundEnabled; } } catch (e) {} }
+function saveSettings() { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {} }
+function hasSave() { return !!localStorage.getItem(SAVE_KEY); }
+function getSaveMeta() { const r = localStorage.getItem(SAVE_KEY); if (!r) return null; try { const d = JSON.parse(r); return { savedAt: d.savedAt, dayCount: d.dayCount, playerNationId: d.playerNationId, version: d.version }; } catch (e) { return null; } }
+function saveGame(silent) {
+  try {
+    const data = { version: SAVE_VERSION, savedAt: Date.now(), dayCount: state.dayCount, tick: state.tick, playerNationId: state.playerNationId, divisionCounter: state.divisionCounter, activeTab: state.activeTab,
+      divisions: state.divisions.map(d => ({ ...d })), logs: state.logs.slice(0, 50).map(l => ({ ...l })),
+      generalsAssignment: { ...state.generalsAssignment }, techPoints: { ...state.techPoints }, techDone: JSON.parse(JSON.stringify(state.techDone)),
+      warGoals: JSON.parse(JSON.stringify(state.warGoals)), tradeCooldown: { ...state.tradeCooldown },
+      provinces: PROVINCES.map(p => ({ id: p.id, owner: p.owner, victoryPoint: p.victoryPoint, battle: p.battle ? { attackerNation: p.battle.attackerNation, defenderNation: p.battle.defenderNation, attackerDivisions: p.battle.attackerDivisions.map(d => d.id), defenderDivisions: p.battle.defenderDivisions.map(d => d.id), originProvince: p.battle.originProvince, days: p.battle.days } : null })),
+      countries: Object.fromEntries(Object.entries(COUNTRIES).map(([id, c]) => [id, { politicalPower: c.politicalPower, manpower: c.manpower, civilianFactories: c.civilianFactories, militaryFactories: c.militaryFactories, resources: { ...c.resources }, stability: c.stability, warSupport: c.warSupport, relations: { ...c.relations }, wars: [...c.wars], nonAggressionPacts: { ...c.nonAggressionPacts }, buildQueue: c.buildQueue, equipStock: c.equipStock, infrastructure: c.infrastructure, resourceBonus: { ...c.resourceBonus }, modifiers: { ...c.modifiers }, unlockedTemplates: [...c.unlockedTemplates], focusCurrent: c.focusCurrent, focusProgress: c.focusProgress, focusDone: [...c.focusDone], surrendered: !!c.surrendered }])) };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    if (!silent) log("游戏已保存", "good");
+    updateSaveInfoUI(); return true;
+  } catch (e) { if (!silent) log("保存失败：" + e.message, "war"); return false; }
+}
+function loadSaveData() {
+  const raw = localStorage.getItem(SAVE_KEY); if (!raw) return { ok: false, reason: "无存档" };
+  try {
+    const data = JSON.parse(raw);
+    if (data.version !== SAVE_VERSION) return { ok: false, reason: `存档版本不兼容（v${data.version}），请新游戏` };
+    Object.assign(state, {
+      dayCount: data.dayCount, tick: data.tick, playerNationId: data.playerNationId,
+      divisionCounter: data.divisionCounter, divisions: data.divisions || [], logs: data.logs || [],
+      gameEnded: false, selectedProvinceId: null, selectedDivisionIds: [], selectedFocusId: null,
+      highlightCountryId: null, activeTab: data.activeTab || "province",
+      generalsAssignment: data.generalsAssignment || {}, techPoints: data.techPoints || {},
+      techDone: data.techDone || {}, warGoals: data.warGoals || {}, tradeCooldown: data.tradeCooldown || {},
+      pendingEvent: null, diploTab: "neighbor", diploSearch: "",
+    });
+    for (const [id, c] of Object.entries(data.countries || {})) { const t = COUNTRIES[id]; if (!t) continue; Object.assign(t, { politicalPower: c.politicalPower, manpower: c.manpower, civilianFactories: c.civilianFactories, militaryFactories: c.militaryFactories, resources: { ...c.resources }, stability: c.stability, warSupport: c.warSupport, relations: { ...c.relations }, wars: [...c.wars], nonAggressionPacts: { ...c.nonAggressionPacts }, buildQueue: c.buildQueue, equipStock: c.equipStock, infrastructure: c.infrastructure, resourceBonus: { ...c.resourceBonus }, modifiers: { ...c.modifiers }, unlockedTemplates: [...c.unlockedTemplates], focusCurrent: c.focusCurrent, focusProgress: c.focusProgress, focusDone: [...c.focusDone], surrendered: !!c.surrendered }); }
+    for (const p of data.provinces || []) { const t = getProvince(p.id); if (!t) continue; t.owner = p.owner; t.victoryPoint = p.victoryPoint; t.battle = null; }
+    for (const p of data.provinces || []) { const t = getProvince(p.id); if (!t || !p.battle) continue; t.battle = { attackerNation: p.battle.attackerNation, defenderNation: p.battle.defenderNation, attackerDivisions: (p.battle.attackerDivisions || []).map(id => state.divisions.find(d => d.id === id)).filter(Boolean), defenderDivisions: (p.battle.defenderDivisions || []).map(id => state.divisions.find(d => d.id === id)).filter(Boolean), originProvince: p.battle.originProvince, days: p.battle.days }; }
+    return { ok: true };
+  } catch (e) { return { ok: false, reason: "存档损坏" }; }
+}
+function deleteSave() { localStorage.removeItem(SAVE_KEY); updateSaveInfoUI(); }
+function updateSaveInfoUI() {
+  const meta = getSaveMeta(); const info = document.getElementById("save-info"); if (!info) return;
+  if (!meta) { info.innerHTML = "尚未存档"; return; }
+  const d = new Date(meta.savedAt);
+  const ts = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  const nn = COUNTRIES[meta.playerNationId] ? COUNTRIES[meta.playerNationId].name : meta.playerNationId;
+  info.innerHTML = `<strong>最近存档</strong><br>时间：${ts}<br>日期：${formatDate(meta.dayCount)}<br>国家：${nn}`;
+}
+
+const $map = document.getElementById("map");
+const $focusTreeWrap = document.getElementById("focus-tree-wrap");
+const $focusTreeSvg = document.getElementById("focus-tree-svg");
+const $focusTreeNodes = document.getElementById("focus-tree-nodes");
+const $countryList = document.getElementById("country-list");
+const $provinceDetail = document.getElementById("province-detail");
+const $production = document.getElementById("tab-production");
+const $focusSummary = document.getElementById("focus-summary");
+const $focusDetail = document.getElementById("focus-detail");
+const $techPanel = document.getElementById("tab-tech");
+const $militaryOverview = document.getElementById("military-overview");
+const $militaryGenerals = document.getElementById("military-generals");
+const $militaryTemplates = document.getElementById("military-templates");
+const $militaryBattles = document.getElementById("military-battles");
+const $diplomacyPanel = document.getElementById("diplomacy-panel");
+const $warIndicator = document.getElementById("war-indicator");
+const $logbar = document.getElementById("logbar");
+
+function applyZoom() {
+  const vb = state.viewBox;
+  $map.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+}
+function renderTopbar() {
+  const n = getPlayerNation();
+  document.getElementById("date-display").textContent = formatDate(state.dayCount);
+  document.getElementById("nation-name").textContent = n.name;
+  document.getElementById("nation-badge-swatch").style.background = n.color;
+  document.getElementById("res-steel").textContent = Math.floor(n.resources.steel);
+  document.getElementById("res-oil").textContent = Math.floor(n.resources.oil);
+  document.getElementById("res-equip").textContent = Math.floor(n.equipStock);
+  document.getElementById("res-manpower").textContent = fmtNum(Math.floor(n.manpower));
+  document.getElementById("res-pp").textContent = n.politicalPower.toFixed(1);
+  document.getElementById("res-tech").textContent = state.techPoints[n.id] || 0;
+  document.getElementById("stab-fill").style.width = (n.stability * 100).toFixed(0) + "%";
+  document.getElementById("stab-text").textContent = (n.stability * 100).toFixed(0) + "%";
+  document.getElementById("ws-fill").style.width = (n.warSupport * 100).toFixed(0) + "%";
+  document.getElementById("ws-text").textContent = (n.warSupport * 100).toFixed(0) + "%";
+  if (n.wars.length === 0) { $warIndicator.textContent = "和平"; $warIndicator.className = "peace"; }
+  else { $warIndicator.textContent = `⚔ 交战中 (${n.wars.length})`; $warIndicator.className = "war"; }
+  document.querySelectorAll(".speed-btn[data-speed]").forEach(b => b.classList.toggle("active", Number(b.dataset.speed) === state.speed));
+}
+
+function buildMap() {
+  while ($map.firstChild) $map.removeChild($map.firstChild);
+  $map.setAttribute("viewBox", `0 0 ${MAP_W} ${MAP_H}`);
+  const gp = svgEl("g", { id: "layer-provinces" });
+  const gl = svgEl("g", { id: "layer-labels" });
+  const gu = svgEl("g", { id: "layer-units" });
+  $map.appendChild(gp); $map.appendChild(gl); $map.appendChild(gu);
+  PROVINCES.forEach(p => {
+    // ⚠️ 防御：country 可能未定义
+    const country = COUNTRIES[p.owner];
+    const color = country ? country.color : "#666";
+    const poly = svgEl("polygon", { points: hexPoints(p.x, p.y, HEX_R - 0.5), fill: color, "data-pid": p.id, class: "province" + (p.isCapital ? " capital" : "") + (p.battle ? " battle" : "") });
+    poly.addEventListener("click", ev => { ev.stopPropagation(); selectProvince(p.id); });
+    poly.addEventListener("mouseenter", () => { const tt = document.getElementById("tooltip"); tt.textContent = `${p.name}（${country ? country.name : '?'}）\n${TERRAIN[p.terrain].name} · ★${p.victoryPoint}`; tt.classList.remove("hidden"); });
+    poly.addEventListener("mousemove", (ev) => { const tt = document.getElementById("tooltip"); tt.style.left = (ev.clientX + 14) + "px"; tt.style.top = (ev.clientY + 16) + "px"; });
+    poly.addEventListener("mouseleave", () => document.getElementById("tooltip").classList.add("hidden"));
+    gp.appendChild(poly);
+  });
+  PROVINCES.forEach(p => {
+    const label = svgEl("text", { x: p.x, y: p.isCapital ? p.y - 4 : p.y + 1, class: "province-label" });
+    label.textContent = p.name;
+    gl.appendChild(label);
+    if (p.isCapital) {
+      const vp = svgEl("text", { x: p.x, y: p.y + 8, class: "province-vp" });
+      vp.textContent = "★";
+      gl.appendChild(vp);
+    }
+  });
+  renderMapUnits(gu);
+  $map.addEventListener("click", ev => { if (ev.target === $map) selectProvince(null); });
+  state.viewBox = { x: 0, y: 0, w: MAP_W, h: MAP_H };
+  applyZoom();
+}
+function renderMapUnits(gu) {
+  while (gu.firstChild) gu.removeChild(gu.firstChild);
+  PROVINCES.forEach(p => {
+    const ds = getDivisionsAt(p.id);
+    if (ds.length > 0) { const t = svgEl("text", { x: p.x, y: p.y + 7, class: "province-units" }); t.textContent = "⚔" + ds.length; gu.appendChild(t); }
+    if (p.battle) { const i = svgEl("text", { x: p.x, y: p.y + 13, class: "province-battle-icon" }); i.textContent = "💥"; gu.appendChild(i); }
+  });
+}
+function updateProvinceColors() {
+  $map.querySelectorAll(".province").forEach(el => {
+    const p = getProvince(el.dataset.pid); if (!p) return;
+    const c = COUNTRIES[p.owner];
+    if (c) el.setAttribute("fill", c.color);
+    el.classList.toggle("battle", !!p.battle);
+    el.classList.toggle("capital", !!p.isCapital);
+    el.classList.toggle("encircled", state.divisions.some(d => d.location === p.id && isEncircled(d)));
+  });
+}
+function renderCountryList() {
+  try {
+    const pl = getPlayerNation();
+    const html = Object.values(COUNTRIES).map(c => {
+      const pc = PROVINCES.filter(p => p.owner === c.id).length;
+      const dc = state.divisions.filter(d => d.owner === c.id).length;
+      const ac = state.highlightCountryId === c.id ? " active" : "";
+      const ip = c.id === pl.id, aw = pl.wars.includes(c.id), dd = c.surrendered ? " dead" : "";
+      return `<div class="country-row${ac}${aw ? " at-war" : ""}${dd}" data-cid="${c.id}">
+        <span class="swatch" style="background:${c.color}"></span>
+        <div class="c-body">
+          <div class="c-head"><span class="c-name">${c.name}${ip ? " (你)" : ""}${c.surrendered ? "（投降）" : ""}</span><span class="c-badge">${pc}省·${dc}师</span></div>
+          <div class="c-line">${IDEOLOGY[c.ideology]} · 战支 ${(c.warSupport*100).toFixed(0)}%</div>
+        </div>
+      </div>`;
+    }).join("");
+    $countryList.innerHTML = "<h2>国家一览（30 国）</h2><div class='nation-list-scroll'>" + html + "</div>";
+    $countryList.querySelectorAll(".country-row").forEach(r => r.addEventListener("click", () => toggleCountryFilter(r.dataset.cid)));
+  } catch (e) {
+    console.error("renderCountryList 出错", e);
+    $countryList.innerHTML = "<h2>国家一览</h2><div class='empty'>加载失败，请刷新页面</div>";
+  }
+}
+function renderProvinceDetail(id) {
+  try {
+    if (!id) { $provinceDetail.innerHTML = "<h2>省份详情</h2><div class='empty'>点击地图上的省份查看详情</div>"; return; }
+    const p = getProvince(id); if (!p) { $provinceDetail.innerHTML = "<h2>省份详情</h2><div class='empty'>省份不存在</div>"; return; }
+    const c = COUNTRIES[p.owner];
+    if (!c) { $provinceDetail.innerHTML = "<h2>省份详情</h2><div class='empty'>归属国家异常</div>"; return; }
+    const t = TERRAIN[p.terrain];
+    const ip = p.owner === state.playerNationId;
+    const supply = ip ? (getSupplyLevel(state.playerNationId, id) * 100).toFixed(0) + "%" : "?";
+    const resItems = [];
+    if (p.resources.steel > 0) resItems.push(`<span class="res-tag steel">钢+${p.resources.steel}</span>`);
+    if (p.resources.oil > 0) resItems.push(`<span class="res-tag oil">油+${p.resources.oil}</span>`);
+    const resHtml = resItems.length ? resItems.join("") : "<span class='muted'>无</span>";
+    const nbHtml = p.neighbors.map(nid => { const nn = getProvince(nid); if (!nn) return ""; const nc = COUNTRIES[nn.owner]; return `<button class="chip" data-pid="${nid}" style="border-left:3px solid ${nc ? nc.color : '#666'}">${nn.name}</button>`; }).join("");
+    const ds = getDivisionsAt(id);
+    const sel = ds.filter(isDivisionSelectable);
+    const selHere = sel.filter(d => state.selectedDivisionIds.includes(d.id));
+    let divHtml = "";
+    if (!ds.length) divHtml = "<span class='muted'>无驻军</span>";
+    else divHtml = ds.map(d => {
+      const tpl = DIVISION_TEMPLATES[d.templateId];
+      const op = (d.organization / tpl.maxOrganization * 100).toFixed(0), ep = (d.equipment * 100).toFixed(0);
+      const selectable = isDivisionSelectable(d), isSel = state.selectedDivisionIds.includes(d.id);
+      const inB = p.battle && (p.battle.attackerDivisions.includes(d) || p.battle.defenderDivisions.includes(d));
+      const enc = isEncircled(d);
+      return `<div class="div-card${selectable ? " selectable" : ""}${isSel ? " selected" : ""}${inB ? " in-battle" : ""}${enc ? " encircled" : ""}" data-div-id="${d.id}">
+        <div class="div-head"><span class="div-name" style="color:${COUNTRIES[d.owner].color}">${selectable ? '<span class="div-check">✓</span>' : ""}${tpl.name}${enc ? ' [包围]' : ''}</span><span class="div-id">${d.id}</span></div>
+        <div class="div-stat">组织 ${Math.floor(d.organization)}/${tpl.maxOrganization}</div>
+        <div class="bar-wrap"><div class="bar-fill red" style="width:${op}%"></div></div>
+        <div class="div-stat">装备 ${ep}%</div>
+        <div class="bar-wrap"><div class="bar-fill gold" style="width:${ep}%"></div></div>
+        ${inB ? `<div class="div-stat" style="color:#ff8a8a">⚔ 战斗中</div>` : ""}
+      </div>`;
+    }).join("");
+    let bulk = "";
+    if (sel.length > 0) bulk = `<div class="bulk-actions"><button class="btn primary" data-bulk="all">全选 (${sel.length})</button><button class="btn" data-bulk="none" ${selHere.length === 0 ? "disabled" : ""}>清空</button></div>${selHere.length > 0 ? `<div class="c-line" style="color:#ffd75e;font-weight:600;margin-bottom:6px">已选中 ${selHere.length} 个师</div>` : ""}`;
+    let recruitHtml = "";
+    if (ip && !p.battle) {
+      const n = getPlayerNation();
+      recruitHtml = `<div class="sec-title">招募师</div>` + Object.values(DIVISION_TEMPLATES).map(tpl => {
+        const un = n.unlockedTemplates.includes(tpl.id), ce = n.equipStock >= tpl.equipmentCost, cm = n.manpower >= tpl.manpowerCost;
+        const ok = un && ce && cm;
+        return `<button class="btn" data-recruit="${tpl.id}" ${ok ? "" : "disabled"}
+          data-tip="${tpl.name} · 攻${tpl.attack} 防${tpl.defense}\n解锁：${tpl.unlockSource}">
+          ${tpl.name}<span class="btn-cost">${!un ? "未解锁" : !ce ? "装备不足" : !cm ? "人力不足" : `装${tpl.equipmentCost}·人${fmtNum(tpl.manpowerCost)}`}</span>
+        </button>`;
+      }).join("");
+    }
+    let moveHtml = "";
+    if (selHere.length > 0) {
+      const mn = COUNTRIES[state.playerNationId];
+      const nbs = p.neighbors.map(nid => {
+        const nn = getProvince(nid); if (!nn) return "";
+        const isE = nn.owner !== p.owner, aw = isE && mn.wars.includes(nn.owner), hb = !!nn.battle;
+        const cnt = selHere.length;
+        let forecast = "";
+        if (isE && aw) {
+          const pred = predictBattle(selHere.map(id => state.divisions.find(d => d.id === id)).filter(Boolean), state.divisions.filter(d => d.location === nid && d.owner === nn.owner && d.organization > 0), nn);
+          if (pred) {
+            const cls = pred.ratio > 1.3 ? "good" : pred.ratio < 0.8 ? "bad" : "";
+            forecast = `<span class="btn-forecast ${cls}">预估：攻 ${pred.atkPower} vs 防 ${pred.defPower}（${pred.ratio > 1 ? '+' : ''}${((pred.ratio-1)*100).toFixed(0)}%）· 约 ${pred.daysEstimate} 天</span>`;
+          }
+        }
+        const lb = isE ? (aw ? `⚔ 进攻 ${nn.name}（${cnt} 师）` : `进攻 ${nn.name}（需宣战）`) : `→ 移动 ${nn.name}（${cnt} 师）`;
+        return `<button class="btn ${isE ? "danger" : ""}" data-target="${nid}" ${hb ? "disabled" : ""}>${lb}${forecast}</button>`;
+      }).join("");
+      moveHtml = `<div class="sec-title" style="color:#ffd75e">选中 ${selHere.length} 师行动</div>${nbs}`;
+    }
+    let generalHtml = "";
+    if (ip) {
+      const n = getPlayerNation();
+      const myGenerals = GENERALS[n.id] || [];
+      const assignedElsewhere = {};
+      for (const pid in state.generalsAssignment) { if (pid !== id) assignedElsewhere[state.generalsAssignment[pid]] = pid; }
+      const genOptions = myGenerals.map(g => {
+        const elsewhere = assignedElsewhere[g.id];
+        const disabled = elsewhere ? "disabled" : "", note = elsewhere ? ` [驻守 ${getProvince(elsewhere)?.name || '?'}]` : "";
+        const selected = state.generalsAssignment[id] === g.id ? "selected" : "";
+        return `<option value="${g.id}" ${disabled} ${selected}>${g.name}（${g.trait}）${note}</option>`;
+      }).join("");
+      generalHtml = `<div class="sec-title">驻省将领</div>
+        <select id="general-select" style="width:100%;padding:6px;background:#1c242e;border:1px solid #2b3641;border-radius:4px;color:#dbe3ec;font-size:12px">
+          <option value="">-- 无 --</option>${genOptions}
+        </select>`;
+    }
+    let battleHtml = "";
+    if (p.battle) {
+      const b = p.battle;
+      const pred = predictBattle(b.attackerDivisions, b.defenderDivisions, p);
+      const atkOrg = b.attackerDivisions.reduce((s, d) => s + d.organization, 0);
+      const defOrg = b.defenderDivisions.reduce((s, d) => s + d.organization, 0);
+      const atkMaxOrg = b.attackerDivisions.reduce((s, d) => s + DIVISION_TEMPLATES[d.templateId].maxOrganization, 0);
+      const defMaxOrg = b.defenderDivisions.reduce((s, d) => s + DIVISION_TEMPLATES[d.templateId].maxOrganization, 0);
+      battleHtml = `<div class="sec-title" style="color:#ff8a8a">⚔ 战斗第 ${b.days} 天</div>
+        <div class="stat-grid">
+          <div class="stat"><span class="k">进攻方</span><span class="v" style="color:${COUNTRIES[b.attackerNation].color}">${COUNTRIES[b.attackerNation].name} (${b.attackerDivisions.length}师)</span></div>
+          <div class="stat"><span class="k">防守方</span><span class="v" style="color:${COUNTRIES[b.defenderNation].color}">${COUNTRIES[b.defenderNation].name} (${b.defenderDivisions.length}师)</span></div>
+        </div>
+        <div class="c-line">进攻 ${Math.floor(atkOrg)}/${atkMaxOrg}</div>
+        <div class="bar-wrap"><div class="bar-fill red" style="width:${(atkOrg/atkMaxOrg*100).toFixed(0)}%"></div></div>
+        <div class="c-line">防守 ${Math.floor(defOrg)}/${defMaxOrg}</div>
+        <div class="bar-wrap"><div class="bar-fill blue" style="width:${(defOrg/defMaxOrg*100).toFixed(0)}%"></div></div>
+        ${pred ? `<div class="c-line" style="margin-top:6px;color:#9fc3ea">预估还需 ${pred.daysEstimate} 天</div>` : ""}`;
+    }
+    let peaceHtml = "";
+    const myWars = getPlayerNation().wars;
+    myWars.forEach(enemyId => {
+      if (canOfferPeace(state.playerNationId, enemyId)) {
+        peaceHtml += `<button class="btn teal" data-peace="${enemyId}">☮ 与 ${COUNTRIES[enemyId].name} 议和</button>`;
+      }
+    });
+    $provinceDetail.innerHTML = `<h2>省份详情</h2>
+      <div class="prov-head"><span class="swatch big" style="background:${c.color}"></span><div><div class="prov-name">${p.name}${p.isCapital ? '<span class="cap-tag">首都</span>' : ""}</div><div class="prov-owner" style="color:${c.color}">${c.name}</div></div></div>
+      <div class="stat-grid">
+        <div class="stat"><span class="k">地形</span><span class="v">${t.name}</span></div>
+        <div class="stat"><span class="k">胜利点</span><span class="v gold">★ ${p.victoryPoint}</span></div>
+        <div class="stat"><span class="k">进攻修正</span><span class="v">×${t.atkMod.toFixed(2)}</span></div>
+        <div class="stat"><span class="k">防御修正</span><span class="v">×${t.defMod.toFixed(2)}</span></div>
+        ${ip ? `<div class="stat"><span class="k">补给</span><span class="v ${supply === '0%' ? 'red' : 'green'}">${supply}</span></div>` : ""}
+      </div>
+      <div class="sec-title">资源产出</div><div class="res-row">${resHtml}</div>
+      <div class="sec-title">驻军（${ds.length}）</div>${bulk}${divHtml}${battleHtml}${generalHtml}${moveHtml}${peaceHtml}${recruitHtml}
+      <div class="sec-title">相邻省份（${p.neighbors.length}）</div><div class="chips">${nbHtml}</div>`;
+    $provinceDetail.querySelectorAll("[data-div-id]").forEach(card => card.addEventListener("click", () => toggleDivisionSelection(card.dataset.divId)));
+    $provinceDetail.querySelectorAll("[data-bulk]").forEach(btn => btn.addEventListener("click", () => btn.dataset.bulk === "all" ? selectAllDivisionsInProvince(id) : clearDivisionSelection()));
+    $provinceDetail.querySelectorAll(".chip").forEach(btn => btn.addEventListener("click", () => selectProvince(btn.dataset.pid)));
+    $provinceDetail.querySelectorAll("[data-recruit]").forEach(btn => btn.addEventListener("click", () => { const r = recruitDivision(btn.dataset.recruit, id); if (!r.ok) log(`招募失败：${r.reason}`); else { renderAll(); toast(`招募成功`, "good"); } }));
+    $provinceDetail.querySelectorAll("[data-target]").forEach(btn => btn.addEventListener("click", () => {
+      if (!state.selectedDivisionIds.length) return;
+      const tid = btn.dataset.target, tp = getProvince(tid); if (!tp) return;
+      if (tp.owner === p.owner) { const r = moveDivisions(state.selectedDivisionIds, tid); if (!r.ok) log(`移动失败：${r.reason}`, "war"); }
+      else { if (!COUNTRIES[state.playerNationId].wars.includes(tp.owner)) { log(`无法进攻：未宣战`, "war"); return; } const r = attackDivisions(state.selectedDivisionIds, tid); if (!r.ok) log(`进攻失败：${r.reason}`, "war"); }
+      state.selectedDivisionIds = [];
+    }));
+    $provinceDetail.querySelectorAll("[data-peace]").forEach(btn => btn.addEventListener("click", () => { offerPeace(state.playerNationId, btn.dataset.peace, state.warGoals[state.playerNationId] || []); renderAll(); }));
+    const genSel = document.getElementById("general-select");
+    if (genSel) genSel.addEventListener("change", (e) => { assignGeneral(id, e.target.value || null); renderProvinceDetail(id); });
+  } catch (e) {
+    console.error("renderProvinceDetail 出错", e);
+    $provinceDetail.innerHTML = `<h2>省份详情</h2><div class='empty'>加载失败：${e.message}</div>`;
+  }
+}
+
+const POLITICAL_ACTIONS = [
+  { id: "boostFocus", name: "加速国策", cost: 25, condition: n => !!n.focusCurrent, effect: n => { n.focusProgress += 10; } },
+  { id: "emergencyRecruit", name: "紧急动员", cost: 30, effect: n => { n.manpower += 20000; } },
+  { id: "boostWarSupport", name: "宣传战争", cost: 35, effect: n => { n.warSupport = Math.min(1, n.warSupport + 0.05); } },
+  { id: "boostStability", name: "提振民心", cost: 40, effect: n => { n.stability = Math.min(1, n.stability + 0.05); } },
+  { id: "rushBuild", name: "加速建造", cost: 50, condition: n => !!n.buildQueue, effect: n => { if (n.buildQueue) n.buildQueue.progress += 200; } },
+  { id: "emergencyEquip", name: "紧急采购", cost: 60, effect: n => { n.equipStock += 150; } },
+  { id: "researchBoost", name: "科研投入", cost: 40, effect: n => { state.techPoints[n.id] = (state.techPoints[n.id] || 0) + 30; } },
+];
+function doPoliticalAction(id) {
+  const a = POLITICAL_ACTIONS.find(x => x.id === id); if (!a) return;
+  const n = getPlayerNation(); if (n.politicalPower < a.cost) return;
+  if (a.condition && !a.condition(n)) return;
+  n.politicalPower -= a.cost; a.effect(n); log(`政治行动：${a.name}`, "diplo"); toast(a.name, "good"); renderAll();
+}
+function startConstruction(type) {
+  const def = CONFIG.constructions[type], n = getPlayerNation();
+  if (!def || n.buildQueue || n.resources.steel < def.steelCost) return;
+  n.resources.steel -= def.steelCost; n.buildQueue = { type, name: def.name, cost: def.cost, progress: 0 };
+  log(`开始建造：${def.name}`); renderProductionPanel(); renderTopbar();
+}
+function renderProductionPanel() {
+  if ($production.classList.contains("hidden")) return;
+  const n = getPlayerNation();
+  const bp = getDailyBuildPoints(n), ep = getDailyEquipPoints(n);
+  const res = getDailyResources(n), mp = getDailyManpowerGrowth(n), pp = getDailyPoliticalPower(n);
+  let qHtml = n.buildQueue
+    ? (() => { const q = n.buildQueue; const pct = Math.min(100, (q.progress / q.cost) * 100); const dl = Math.max(0, Math.ceil((q.cost - q.progress) / Math.max(1, bp))); return `<div class="queue-head"><span>${q.name}</span><span class="muted">${Math.floor(q.progress)}/${q.cost} · ${dl} 天</span></div><div class="bar-wrap"><div class="bar-fill gold" style="width:${pct.toFixed(1)}%"></div></div>`; })()
+    : `<div class="empty">空闲</div>`;
+  const btns = Object.entries(CONFIG.constructions).map(([t, d]) => {
+    const af = n.resources.steel >= d.steelCost, busy = !!n.buildQueue, dis = busy || !af;
+    const r = busy ? "队列满" : (!af ? "钢不足" : "");
+    return `<button class="btn" data-build="${t}" ${dis ? "disabled" : ""}>${d.name}<span class="btn-cost">${d.steelCost}钢${r ? "·" + r : ""}</span></button>`;
+  }).join("");
+  const acts = POLITICAL_ACTIONS.map(a => {
+    const av = n.politicalPower >= a.cost && (!a.condition || a.condition(n));
+    return `<button class="btn purple" data-action="${a.id}" ${av ? "" : "disabled"}>${a.name}<span class="btn-cost">${a.cost}政治</span></button>`;
+  }).join("");
+  const trade = `<div class="sec-title">贸易（每 30 天）</div>
+    <button class="btn" data-trade="steel" ${(state.dayCount - (state.tradeCooldown[n.id] || 0) >= 30 && n.resources.steel >= CONFIG.tradeAmount) ? "" : "disabled"}>卖 ${CONFIG.tradeAmount} 钢 → ${CONFIG.tradePPGain} 政治</button>
+    <button class="btn" data-trade="oil" ${(state.dayCount - (state.tradeCooldown[n.id] || 0) >= 30 && n.resources.oil >= CONFIG.tradeAmount) ? "" : "disabled"}>卖 ${CONFIG.tradeAmount} 油 → ${CONFIG.tradePPGain} 政治</button>`;
+  $production.innerHTML = `
+    <div class="card"><div class="prov-head" style="margin-bottom:8px"><span class="swatch big" style="background:${n.color}"></span><div><div class="prov-name">${n.name}</div><div class="prov-owner" style="color:${n.color}">${IDEOLOGY[n.ideology]}</div></div></div>
+      <div class="stat-grid">
+        <div class="stat"><span class="k">民用工厂</span><span class="v">${n.civilianFactories}</span></div>
+        <div class="stat"><span class="k">军用工厂</span><span class="v">${n.militaryFactories}</span></div>
+        <div class="stat"><span class="k">钢铁</span><span class="v">${Math.floor(n.resources.steel)}</span></div>
+        <div class="stat"><span class="k">石油</span><span class="v">${Math.floor(n.resources.oil)}</span></div>
+        <div class="stat"><span class="k">装备点</span><span class="v gold">${Math.floor(n.equipStock)}</span></div>
+        <div class="stat"><span class="k">人力</span><span class="v">${fmtNum(Math.floor(n.manpower))}</span></div>
+        <div class="stat"><span class="k">政治点数</span><span class="v gold">${n.politicalPower.toFixed(1)}</span></div>
+        <div class="stat"><span class="k">科研点</span><span class="v gold">${state.techPoints[n.id] || 0}</span></div>
+      </div>
+      <div class="sec-title">每日产出</div>
+      <div class="c-line">建造 +${bp} · 装备 +${ep} · 人力 +${Math.floor(mp)}</div>
+      <div class="c-line">钢 +${res.steel.toFixed(1)} · 油 +${res.oil.toFixed(1)} · 政治 +${pp.toFixed(2)}</div>
+    </div>
+    <div class="card"><h2>建造队列</h2>${qHtml}</div>
+    <div class="card"><h2>建造项目</h2>${btns}</div>
+    <div class="card"><h2>政治行动</h2>${acts}</div>
+    <div class="card"><h2>贸易</h2>${trade}</div>`;
+  $production.querySelectorAll("[data-build]").forEach(b => b.addEventListener("click", () => startConstruction(b.dataset.build)));
+  $production.querySelectorAll("[data-action]").forEach(b => b.addEventListener("click", () => doPoliticalAction(b.dataset.action)));
+  $production.querySelectorAll("[data-trade]").forEach(b => b.addEventListener("click", () => {
+    const n = getPlayerNation(), resource = b.dataset.trade;
+    if (state.dayCount - (state.tradeCooldown[n.id] || 0) < 30) { toast("冷却中", "war"); return; }
+    if (n.resources[resource] < CONFIG.tradeAmount) { toast("资源不足", "war"); return; }
+    n.resources[resource] -= CONFIG.tradeAmount;
+    n.politicalPower += CONFIG.tradePPGain;
+    state.tradeCooldown[n.id] = state.dayCount;
+    toast(`+${CONFIG.tradePPGain} 政治`, "good"); renderAll();
+  }));
+}
+
+const FW = 110, FH = 54, F_CG = 16, F_RG = 16, F_PAD = 16;
+function renderFocusTree() {
+  const n = getPlayerNation(), fs = getFocuses(n.id);
+  while ($focusTreeSvg.firstChild) $focusTreeSvg.removeChild($focusTreeSvg.firstChild);
+  $focusTreeNodes.innerHTML = "";
+  const legend = document.getElementById("focus-legend");
+  const seen = new Set();
+  let lh = "";
+  for (const f of fs) { if (seen.has(f.pathLabel)) continue; seen.add(f.pathLabel); lh += `<span><span class="lg-dot" style="background:${f.pathColor}"></span>${f.pathLabel}</span>`; }
+  legend.innerHTML = lh;
+  if (!fs.length) { $focusTreeNodes.innerHTML = `<div class="empty">无国策</div>`; return; }
+  let mc = 0, mr = 0;
+  for (const f of fs) { mc = Math.max(mc, f.position.col); mr = Math.max(mr, f.position.row); }
+  const W = F_PAD * 2 + mc * (FW + F_CG) + FW, H = F_PAD * 2 + mr * (FH + F_RG) + FH;
+  const canvas = document.getElementById("focus-tree-canvas");
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
+  $focusTreeSvg.setAttribute("width", W); $focusTreeSvg.setAttribute("height", H); $focusTreeSvg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const nL = f => F_PAD + f.position.col * (FW + F_CG), nT = f => F_PAD + f.position.row * (FH + F_RG);
+  for (const f of fs) for (const pre of f.prerequisites) {
+    const pr = fs.find(x => x.id === pre); if (!pr) continue;
+    const x1 = nL(pr) + FW, y1 = nT(pr) + FH / 2, x2 = nL(f), y2 = nT(f) + FH / 2;
+    const cx = (x1 + x2) / 2;
+    const line = svgEl("path", { d: `M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`, class: "focus-line" + (n.focusDone.includes(pre) ? " done" : "") });
+    $focusTreeSvg.appendChild(line);
+  }
+  for (const f of fs) {
+    const st = getFocusStatus(n, f), act = n.focusCurrent === f.id, done = n.focusDone.includes(f.id), sel = state.selectedFocusId === f.id;
+    const node = document.createElement("div");
+    node.className = `focus-node ${st}${sel ? " selected" : ""}`;
+    node.dataset.fid = f.id; node.style.left = nL(f) + "px"; node.style.top = nT(f) + "px"; node.style.borderLeftColor = f.pathColor;
+    const tips = f.effects.map(e => "· " + describeEffect(e)).join("\n");
+    node.dataset.tip = `${f.name}（${f.pathLabel}）\n${f.description}\n\n耗时 ${f.cost} 天 · 政治 ${f.ppCost}\n\n${tips}`;
+    let inner = `<div class="focus-title">${f.name}</div>`;
+    if (act) { const pct = (n.focusProgress / f.cost * 100).toFixed(0); inner += `<div class="focus-meta">${n.focusProgress}/${f.cost}</div><div class="focus-progress"><div class="focus-progress-fill" style="width:${pct}%"></div></div>`; }
+    else if (done) inner += `<div class="focus-meta">✓ 已完成</div>`;
+    else inner += `<div class="focus-meta">${f.cost}天·${f.ppCost}政治</div>`;
+    node.innerHTML = inner;
+    $focusTreeNodes.appendChild(node);
+  }
+}
+$focusTreeNodes.addEventListener("click", ev => { const n = ev.target.closest(".focus-node"); if (n) selectFocus(n.dataset.fid); });
+function renderFocusSummary() {
+  const n = getPlayerNation();
+  let st = "";
+  if (n.focusCurrent) { const f = getFocuses(n.id).find(x => x.id === n.focusCurrent); if (f) { const pct = (n.focusProgress / f.cost * 100).toFixed(0); st = `<div class="queue-head"><span>${f.name}</span><span class="muted">${n.focusProgress}/${f.cost} 天</span></div><div class="bar-wrap"><div class="bar-fill gold" style="width:${pct}%"></div></div>`; } else st = `<div class="empty">无</div>`; } else st = `<div class="empty">无</div>`;
+  $focusSummary.innerHTML = `<div class="prov-head" style="margin-bottom:8px"><span class="swatch big" style="background:${n.color}"></span><div><div class="prov-name">${n.name}</div><div class="prov-owner" style="color:${n.color}">国策进度</div></div></div>
+    <div class="stat-grid"><div class="stat"><span class="k">政治点数</span><span class="v gold">${n.politicalPower.toFixed(1)}</span></div><div class="stat"><span class="k">已完成</span><span class="v">${n.focusDone.length}/50</span></div></div>
+    <div class="sec-title">当前国策</div>${st}`;
+}
+function renderFocusDetail() {
+  const n = getPlayerNation(), fid = state.selectedFocusId;
+  if (!fid) { $focusDetail.innerHTML = "<h2>国策详情</h2><div class='empty'>点击国策树中的节点查看详情</div>"; return; }
+  const fs = getFocuses(n.id), f = fs.find(x => x.id === fid); if (!f) return;
+  const st = getFocusStatus(n, f), act = n.focusCurrent === f.id, done = n.focusDone.includes(f.id), ha = !!n.focusCurrent && !done;
+  const pre = f.prerequisites.length === 0 ? "<span class='muted'>无</span>" : f.prerequisites.map(id => { const pr = fs.find(x => x.id === id); const d = n.focusDone.includes(id); return `<span style="color:${d ? "#3fd07d" : "#d87c5a"}">${pr ? pr.name : id} ${d ? "✓" : "✗"}</span>`; }).join("<br>");
+  const eff = f.effects.map(e => `<div>· ${describeEffect(e)}</div>`).join("");
+  let btn = "";
+  if (done) btn = `<button class="btn" disabled>已完成</button>`;
+  else if (act) { const pct = (n.focusProgress / f.cost * 100).toFixed(0); btn = `<div class="queue-head"><span>进行中</span><span class="muted">${n.focusProgress}/${f.cost}</span></div><div class="bar-wrap"><div class="bar-fill gold" style="width:${pct}%"></div></div>`; }
+  else if (st === "locked") btn = `<button class="btn" disabled>前置未完成</button>`;
+  else if (st === "poor") btn = `<button class="btn" disabled>政治不足（需 ${f.ppCost}）</button>`;
+  else if (ha) btn = `<button class="btn" disabled>已有国策</button>`;
+  else btn = `<button class="btn primary" data-start-focus="${f.id}">开始国策</button>`;
+  $focusDetail.innerHTML = `<h2>国策详情</h2>
+    <div class="prov-name" style="margin-bottom:6px">${f.name}</div>
+    <div style="font-size:10px;color:${f.pathColor};margin-bottom:6px">路径：${f.pathLabel}</div>
+    <div class="muted" style="margin-bottom:10px;line-height:1.6">${f.description}</div>
+    <div class="stat-grid"><div class="stat"><span class="k">耗时</span><span class="v">${f.cost} 天</span></div><div class="stat"><span class="k">政治</span><span class="v gold">${f.ppCost}</span></div></div>
+    <div class="sec-title">前置</div><div style="font-size:12px;line-height:1.7">${pre}</div>
+    <div class="sec-title">效果</div><div style="font-size:12px;line-height:1.7;color:#b9c7d6">${eff}</div>
+    <div style="margin-top:12px">${btn}</div>`;
+  $focusDetail.querySelectorAll("[data-start-focus]").forEach(b => b.addEventListener("click", () => startFocus(b.dataset.startFocus)));
+}
+function renderTechPanel() {
+  const n = getPlayerNation(), pts = state.techPoints[n.id] || 0, done = state.techDone[n.id] || [];
+  const html = TECHS.map(t => {
+    const isDone = done.includes(t.id);
+    const canR = !isDone && pts >= t.cost && (!t.requires || t.requires.every(r => done.includes(r)));
+    const reqOk = !t.requires || t.requires.every(r => done.includes(r));
+    const effHtml = t.effects.map(e => describeEffect(e)).join("，");
+    return `<div class="div-card" style="${isDone ? 'opacity:.7;border-color:#27AE60' : ''}">
+      <div class="div-head"><span class="div-name">${t.name}</span>${isDone ? `<span style="color:#3fd07d;font-size:10px">✓ 已完成</span>` : `<span class="div-id">${t.cost} 科研点</span>`}</div>
+      <div class="div-stat">效果：${effHtml}</div>
+      ${!isDone ? `<button class="btn ${canR ? 'primary' : ''}" data-research="${t.id}" ${canR ? '' : 'disabled'} style="margin-top:6px;margin-bottom:0">
+        ${!reqOk ? '前置未完成' : pts < t.cost ? `科研不足（需${t.cost}）` : '开始研究'}
+      </button>` : ''}
+    </div>`;
+  }).join("");
+  $techPanel.innerHTML = `<div class="card"><h2>科技研究</h2>
+    <div class="stat-grid"><div class="stat"><span class="k">科研点</span><span class="v gold">${pts}</span></div><div class="stat"><span class="k">已完成</span><span class="v">${done.length}/${TECHS.length}</span></div></div>
+  </div><div class="card"><h2>可研究项目</h2>${html}</div>`;
+  $techPanel.querySelectorAll("[data-research]").forEach(b => b.addEventListener("click", () => {
+    const tid = b.dataset.research, tech = TECHS.find(t => t.id === tid);
+    if (!tech || state.techPoints[n.id] < tech.cost) return;
+    if (tech.requires && !tech.requires.every(r => state.techDone[n.id].includes(r))) return;
+    state.techPoints[n.id] -= tech.cost;
+    state.techDone[n.id].push(tid);
+    applyFocusEffects(n, { effects: tech.effects });
+    log(`[${n.name}] 研究完成：${tech.name}`, "tech");
+    toast(`科技：${tech.name}`, "tech"); playSound("tech"); renderAll();
+  }));
+}
+function renderMilitaryPanel() {
+  if ($militaryOverview.parentElement.classList.contains("hidden")) return;
+  const n = getPlayerNation();
+  const ds = state.divisions.filter(d => d.owner === n.id);
+  const tm = ds.reduce((s, d) => s + DIVISION_TEMPLATES[d.templateId].maintenance, 0);
+  const dp = getDailyEquipPoints(n);
+  const byP = {};
+  ds.forEach(d => { if (!byP[d.location]) byP[d.location] = []; byP[d.location].push(d); });
+  const groups = Object.entries(byP).map(([pid, arr]) => {
+    const p = getProvince(pid), gen = getGeneralFor(pid);
+    return `<div style="margin-top:8px;font-size:11px;color:#7d8b9b">${p ? p.name : "?"}（${arr.length} 师）${gen ? ' · ' + gen.name : ''}</div>` + arr.map(d => {
+      const t = DIVISION_TEMPLATES[d.templateId], op = (d.organization / t.maxOrganization * 100).toFixed(0), enc = isEncircled(d);
+      return `<div class="div-card${enc ? ' encircled' : ''}"><div class="div-head"><span class="div-name">${t.name}${enc ? ' [被包围]' : ''}</span><span class="div-id">${d.id}</span></div><div class="div-stat">组织 ${Math.floor(d.organization)}/${t.maxOrganization}</div><div class="bar-wrap"><div class="bar-fill red" style="width:${op}%"></div></div><div class="div-stat">装备 ${(d.equipment*100).toFixed(0)}%</div></div>`;
+    }).join("");
+  }).join("");
+  $militaryOverview.innerHTML = `<div class="prov-head" style="margin-bottom:8px"><span class="swatch big" style="background:${n.color}"></span><div><div class="prov-name">${n.name}</div><div class="prov-owner" style="color:${n.color}">军事概览</div></div></div>
+    <div class="stat-grid">
+      <div class="stat"><span class="k">总兵力</span><span class="v">${ds.length} 师</span></div>
+      <div class="stat"><span class="k">装备库存</span><span class="v gold">${Math.floor(n.equipStock)}</span></div>
+      <div class="stat"><span class="k">日装备产出</span><span class="v">+${dp}</span></div>
+      <div class="stat"><span class="k">日维护需求</span><span class="v ${tm > dp ? "red" : ""}">${tm.toFixed(1)}</span></div>
+      <div class="stat"><span class="k">攻击加成</span><span class="v green">+${((n.modifiers.attack - 1) * 100).toFixed(0)}%</span></div>
+      <div class="stat"><span class="k">防御加成</span><span class="v green">+${((n.modifiers.defense - 1) * 100).toFixed(0)}%</span></div>
+    </div>
+    <div class="sec-title">部队分布</div>${ds.length === 0 ? "<div class='empty'>暂无</div>" : groups}`;
+  const generals = GENERALS[n.id] || [];
+  const genHtml = generals.map(g => {
+    const ap = Object.keys(state.generalsAssignment).find(pid => state.generalsAssignment[pid] === g.id);
+    const apn = ap ? (getProvince(ap)?.name || '?') : null;
+    const aS = g.attackMod > 0 ? `+${(g.attackMod*100).toFixed(0)}%` : `${(g.attackMod*100).toFixed(0)}%`;
+    const dS = g.defenseMod > 0 ? `+${(g.defenseMod*100).toFixed(0)}%` : `${(g.defenseMod*100).toFixed(0)}%`;
+    return `<div class="general-card${ap ? ' assigned' : ''}">
+      <div style="flex:1;min-width:0"><div class="g-name">${g.name}</div><div class="g-trait">${g.trait}</div></div>
+      <div style="text-align:right;flex:0 0 auto"><div class="g-mods"><span class="g-mod-atk">攻${aS}</span> · <span class="g-mod-def">防${dS}</span></div><div class="g-mods">${ap ? '驻守：' + apn : '<span style="color:#5c6774">未分配</span>'}</div></div>
+    </div>`;
+  }).join("");
+  $militaryGenerals.innerHTML = `<h2>将领（${generals.length} 位）</h2>${genHtml}`;
+  $militaryTemplates.innerHTML = `<h2>师模板</h2>` + Object.values(DIVISION_TEMPLATES).map(t => {
+    const un = n.unlockedTemplates.includes(t.id);
+    return `<div class="div-card" style="${un ? "" : "opacity:.55"}">
+      <div class="div-head"><span class="div-name">${t.name}</span>${un ? `<span class="div-id" style="color:#3fd07d">✓ 已解锁</span>` : `<span class="div-id">未解锁</span>`}</div>
+      <div class="div-stat">攻 ${t.attack} · 防 ${t.defense} · 组织 ${t.maxOrganization}</div>
+      <div class="div-stat" style="color:${un ? "#5c6774" : "#e8c15a"};font-style:italic">${un ? t.desc : "解锁：" + t.unlockSource}</div>
+    </div>`;
+  }).join("");
+  const battles = PROVINCES.filter(p => p.battle);
+  $militaryBattles.innerHTML = battles.length === 0 ? `<h2>进行中的战斗</h2><div class="empty">暂无</div>` : `<h2>进行中的战斗（${battles.length}）</h2>` + battles.map(p => {
+    const b = p.battle, a = COUNTRIES[b.attackerNation], d = COUNTRIES[b.defenderNation], pred = predictBattle(b.attackerDivisions, b.defenderDivisions, p);
+    return `<div class="div-card in-battle"><div class="div-head"><span class="div-name">${p.name}</span><span class="div-id">第 ${b.days} 天</span></div><div class="div-stat"><span style="color:${a.color}">${a.name}</span> ${b.attackerDivisions.length} 师 vs <span style="color:${d.color}">${d.name}</span> ${b.defenderDivisions.length} 师</div>${pred ? `<div class="div-stat" style="color:#9fc3ea">预估还需 ${pred.daysEstimate} 天</div>` : ''}</div>`;
+  }).join("");
+}
+
+/* ========== 外交栏（3-Tab 彻底重做） ========== */
+function renderDiplomacyPanel() {
+  if ($diplomacyPanel.parentElement.classList.contains("hidden")) return;
+  try {
+    const n = getPlayerNation();
+    const neighborIds = new Set(getAdjacentNations(n.id));
+    const allOthers = Object.values(COUNTRIES).filter(c => c.id !== n.id);
+    const warNations = n.wars.map(id => COUNTRIES[id]).filter(Boolean);
+    const neighborNations = allOthers.filter(c => neighborIds.has(c.id) && !n.wars.includes(c.id) && !c.surrendered);
+    const otherNations = allOthers.filter(c => !neighborIds.has(c.id) && !n.wars.includes(c.id) && !c.surrendered);
+    const surrendered = allOthers.filter(c => c.surrendered);
+
+    const renderRow = (c, mode) => {
+      const r = n.relations[c.id] || 0;
+      const hp = hasActivePact(n.id, c.id);
+      const pd = hp ? n.nonAggressionPacts[c.id] - state.dayCount : 0;
+      const rc = r >= 30 ? "#3fd07d" : r <= -30 ? "#ff6b6b" : "#d6e1ec";
+      let statusText = "", statusColor = "";
+      if (mode === "war") { statusText = "⚔ 交战中"; statusColor = "#ff6b6b"; }
+      else if (c.surrendered) { statusText = "已投降"; statusColor = "#5c6774"; }
+      else if (hp) { statusText = `互不侵犯（${pd}天）`; statusColor = "#9fc3ea"; }
+      else { statusText = "和平"; statusColor = "#7d8b9b"; }
+      let btns = "";
+      if (mode === "war") {
+        const canPeace = canOfferPeace(n.id, c.id);
+        btns = `<button class="btn teal small" data-peace="${c.id}" ${canPeace ? "" : "disabled"}>☮ 议和 ${canPeace ? '' : '(条件未满)'}</button>`;
+      } else if (mode === "neighbor") {
+        if (!hp) {
+          btns += `<button class="btn danger small" data-declare="${c.id}" ${n.politicalPower < CONFIG.declareWarCost ? "disabled" : ""}>宣战（${CONFIG.declareWarCost}）</button>`;
+          btns += `<button class="btn small" data-pact="${c.id}" ${n.politicalPower < CONFIG.nonAggressionCost ? "disabled" : ""}>互不侵犯（${CONFIG.nonAggressionCost}）</button>`;
+        }
+        btns += `<button class="btn small" data-improve="${c.id}" ${n.politicalPower < CONFIG.improveRelationsCost ? "disabled" : ""}>改善关系（${CONFIG.improveRelationsCost}）</button>`;
+      }
+      return `<div class="diplo-row${mode === "war" ? " at-war" : ""}${c.surrendered ? " surrendered-row" : ""}">
+        <span class="swatch" style="background:${c.color}"></span>
+        <div class="c-body">
+          <div class="c-head"><span class="c-name">${c.name}</span><span class="c-badge" style="color:${statusColor}">${statusText}</span></div>
+          <div class="c-line">关系 <span style="color:${rc};font-weight:600">${r > 0 ? "+" + r : r}</span> · 兵力 ${getNationPower(c)} · 国策 ${c.focusDone.length}/50</div>
+          ${btns ? `<div style="margin-top:6px">${btns}</div>` : ""}
+        </div>
+      </div>`;
+    };
+
+    const tab = state.diploTab;
+    const tabsHtml = `
+      <div class="diplo-tabs">
+        <button class="diplo-tab war ${tab === "war" ? "active" : ""}" data-dtab="war">⚔ 交战 (${warNations.length})</button>
+        <button class="diplo-tab neighbor ${tab === "neighbor" ? "active" : ""}" data-dtab="neighbor">🏴 邻国 (${neighborNations.length})</button>
+        <button class="diplo-tab ${tab === "other" ? "active" : ""}" data-dtab="other">🌍 其他 (${otherNations.length + surrendered.length})</button>
+      </div>`;
+
+    let contentHtml = "";
+    if (tab === "war") {
+      contentHtml = warNations.length ? warNations.map(c => renderRow(c, "war")).join("") : "<div class='empty'>目前未与任何国家交战</div>";
+    } else if (tab === "neighbor") {
+      const filtered = state.diploSearch ? neighborNations.filter(c => c.name.toLowerCase().includes(state.diploSearch.toLowerCase())) : neighborNations;
+      contentHtml = filtered.length ? filtered.map(c => renderRow(c, "neighbor")).join("") : "<div class='empty'>" + (neighborNations.length ? "无匹配结果" : "无邻国") + "</div>";
+    } else {
+      const allNonWar = otherNations.concat(surrendered);
+      const filtered = state.diploSearch ? allNonWar.filter(c => c.name.toLowerCase().includes(state.diploSearch.toLowerCase())) : allNonWar;
+      contentHtml = filtered.length ? filtered.map(c => renderRow(c, c.surrendered ? "war" : "other")).join("") : "<div class='empty'>无其他国家</div>";
+    }
+
+    $diplomacyPanel.innerHTML = `
+      <div class="prov-head" style="margin-bottom:8px"><span class="swatch big" style="background:${n.color}"></span><div><div class="prov-name">${n.name}</div><div class="prov-owner" style="color:${n.color}">外交概览</div></div></div>
+      <div class="stat-grid">
+        <div class="stat"><span class="k">政治点数</span><span class="v gold">${n.politicalPower.toFixed(1)}</span></div>
+        <div class="stat"><span class="k">战支</span><span class="v">${(n.warSupport*100).toFixed(0)}%</span></div>
+      </div>
+      <div class="sec-title">搜索（当前 Tab 内）</div>
+      <input type="text" class="diplo-search" placeholder="🔍 输入国家名..." id="diplo-search-input" value="${state.diploSearch}">
+      ${tabsHtml}
+      <div class="diplo-list" style="max-height:480px;overflow-y:auto">${contentHtml}</div>
+    `;
+
+    $diplomacyPanel.querySelectorAll("[data-dtab]").forEach(b => b.addEventListener("click", () => {
+      state.diploTab = b.dataset.dtab;
+      state.diploSearch = "";
+      renderDiplomacyPanel();
+    }));
+    const searchInput = document.getElementById("diplo-search-input");
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        state.diploSearch = e.target.value;
+        const tab = state.diploTab, search = state.diploSearch;
+        renderDiplomacyPanel();
+        const inp = document.getElementById("diplo-search-input");
+        if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+      });
+    }
+    $diplomacyPanel.querySelectorAll("[data-declare]").forEach(b => b.addEventListener("click", () => {
+      const targetId = b.dataset.declare;
+      const myProvs = PROVINCES.filter(p => p.owner === n.id);
+      const enemies = PROVINCES.filter(p => p.owner === targetId);
+      let goals = [];
+      for (const mp of myProvs) for (const ep of enemies) if (mp.neighbors.includes(ep.id)) { goals.push(ep.id); if (goals.length >= 2) break; }
+      const r = declareWar(n.id, targetId, goals);
+      if (!r.ok) log(`宣战失败：${r.reason}`, "war"); else { toast(`宣战：${COUNTRIES[targetId].name}`, "war"); renderAll(); }
+    }));
+    $diplomacyPanel.querySelectorAll("[data-pact]").forEach(b => b.addEventListener("click", () => { const r = makePact(n.id, b.dataset.pact); if (!r.ok) log(`签约失败：${r.reason}`); else { toast("签约成功", "good"); renderAll(); } }));
+    $diplomacyPanel.querySelectorAll("[data-improve]").forEach(b => b.addEventListener("click", () => { const r = improveRelations(n.id, b.dataset.improve); if (!r.ok) log(`改善失败：${r.reason}`); else renderAll(); }));
+    $diplomacyPanel.querySelectorAll("[data-peace]").forEach(b => b.addEventListener("click", () => { offerPeace(n.id, b.dataset.peace, state.warGoals[n.id] || []); renderAll(); }));
+  } catch (e) {
+    console.error("renderDiplomacyPanel 出错", e);
+    $diplomacyPanel.innerHTML = `<h2>外交</h2><div class='empty'>加载失败：${e.message}</div>`;
+  }
+}
+
+function log(text, type) { state.logs.unshift({ dateStr: formatDate(state.dayCount), text, type }); if (state.logs.length > 60) state.logs.pop(); renderLogs(); }
+function renderLogs() {
+  if (!state.logs.length) { $logbar.innerHTML = `<div class="log-line"><span class="log-day">${formatDate(state.dayCount)}</span>游戏开始</div>`; return; }
+  $logbar.innerHTML = state.logs.slice(0, 15).map(l => `<div class="log-line ${l.type || ""}"><span class="log-day">${l.dateStr}</span><span>${l.text}</span></div>`).join("");
+}
+
+// ⚠️ 关键修复：每个渲染函数独立 try-catch，一个失败不影响其他
+function renderAll() {
+  const safe = (fn, name) => { try { fn(); } catch (e) { console.error(`[renderAll] ${name} 出错:`, e); } };
+  safe(renderTopbar, "renderTopbar");
+  safe(renderCountryList, "renderCountryList");
+  safe(updateProvinceColors, "updateProvinceColors");
+  safe(() => { const gu = document.getElementById("layer-units"); if (gu) renderMapUnits(gu); }, "renderMapUnits");
+  safe(() => renderProvinceDetail(state.selectedProvinceId), "renderProvinceDetail");
+  if (state.activeTab === "production") safe(renderProductionPanel, "renderProductionPanel");
+  if (state.activeTab === "focus") { safe(renderFocusTree, "renderFocusTree"); safe(renderFocusDetail, "renderFocusDetail"); safe(renderFocusSummary, "renderFocusSummary"); }
+  if (state.activeTab === "tech") safe(renderTechPanel, "renderTechPanel");
+  if (state.activeTab === "military") safe(renderMilitaryPanel, "renderMilitaryPanel");
+  if (state.activeTab === "diplomacy") safe(renderDiplomacyPanel, "renderDiplomacyPanel");
+}
+function selectProvince(id) {
+  state.selectedProvinceId = id; state.selectedDivisionIds = [];
+  $map.querySelectorAll(".province").forEach(el => el.classList.toggle("selected", el.dataset.pid === id));
+  renderProvinceDetail(id);
+}
+function selectFocus(fid) {
+  state.selectedFocusId = fid;
+  $focusTreeNodes.querySelectorAll(".focus-node").forEach(n => n.classList.toggle("selected", n.dataset.fid === fid));
+  renderFocusDetail();
+}
+function toggleCountryFilter(cid) {
+  state.highlightCountryId = (state.highlightCountryId === cid) ? null : cid;
+  $map.querySelectorAll(".province").forEach(el => { const p = getProvince(el.dataset.pid); el.classList.toggle("dimmed", state.highlightCountryId !== null && p.owner !== state.highlightCountryId); });
+  renderCountryList();
+}
+function switchTab(tab) {
+  state.activeTab = tab;
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  ["province", "production", "focus", "tech", "military", "diplomacy"].forEach(t => document.getElementById("tab-" + t)?.classList.toggle("hidden", t !== tab));
+  const showF = tab === "focus";
+  $map.classList.toggle("hidden", showF); $focusTreeWrap.classList.toggle("hidden", !showF);
+  if (tab === "production") renderProductionPanel();
+  if (tab === "focus") { renderFocusTree(); renderFocusSummary(); renderFocusDetail(); }
+  if (tab === "tech") renderTechPanel();
+  if (tab === "military") renderMilitaryPanel();
+  if (tab === "diplomacy") renderDiplomacyPanel();
+}
+
+const $tooltip = document.getElementById("tooltip");
+document.addEventListener("mousemove", ev => {
+  const el = ev.target.closest("[data-tip]");
+  if (el && el.dataset.tip) {
+    $tooltip.textContent = el.dataset.tip; $tooltip.classList.remove("hidden");
+    let x = ev.clientX + 14, y = ev.clientY + 16; const r = $tooltip.getBoundingClientRect();
+    if (x + r.width > window.innerWidth - 8) x = window.innerWidth - r.width - 8;
+    if (y + r.height > window.innerHeight - 8) y = ev.clientY - r.height - 12;
+    $tooltip.style.left = x + "px"; $tooltip.style.top = y + "px";
+  } else $tooltip.classList.add("hidden");
+});
+
+let isDragging = false, dragStart = null, dragStartView = null;
+$map.addEventListener("mousedown", (ev) => {
+  if (ev.target.tagName === "polygon") return;
+  isDragging = true; $map.classList.add("dragging");
+  const rect = $map.getBoundingClientRect();
+  dragStart = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+  dragStartView = { x: state.viewBox.x, y: state.viewBox.y };
+});
+document.addEventListener("mousemove", (ev) => {
+  if (!isDragging) return;
+  const rect = $map.getBoundingClientRect();
+  const cur = { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+  const rx = state.viewBox.w / rect.width, ry = state.viewBox.h / rect.height;
+  state.viewBox.x = dragStartView.x - (cur.x - dragStart.x) * rx;
+  state.viewBox.y = dragStartView.y - (cur.y - dragStart.y) * ry;
+  applyZoom();
+});
+document.addEventListener("mouseup", () => { isDragging = false; $map.classList.remove("dragging"); });
+$map.addEventListener("wheel", (ev) => {
+  ev.preventDefault();
+  const factor = ev.deltaY > 0 ? 1.15 : 0.87;
+  const rect = $map.getBoundingClientRect();
+  const mx = ev.clientX - rect.left, my = ev.clientY - rect.top;
+  const wx = state.viewBox.x + mx / rect.width * state.viewBox.w;
+  const wy = state.viewBox.y + my / rect.height * state.viewBox.h;
+  state.viewBox.w *= factor; state.viewBox.h *= factor;
+  state.viewBox.x = wx - mx / rect.width * state.viewBox.w;
+  state.viewBox.y = wy - my / rect.height * state.viewBox.h;
+  applyZoom();
+}, { passive: false });
+document.getElementById("btn-zoom-in").addEventListener("click", () => { const cx = state.viewBox.x + state.viewBox.w/2, cy = state.viewBox.y + state.viewBox.h/2; state.viewBox.w *= 0.8; state.viewBox.h *= 0.8; state.viewBox.x = cx - state.viewBox.w/2; state.viewBox.y = cy - state.viewBox.h/2; applyZoom(); });
+document.getElementById("btn-zoom-out").addEventListener("click", () => { const cx = state.viewBox.x + state.viewBox.w/2, cy = state.viewBox.y + state.viewBox.h/2; state.viewBox.w *= 1.25; state.viewBox.h *= 1.25; state.viewBox.x = cx - state.viewBox.w/2; state.viewBox.y = cy - state.viewBox.h/2; applyZoom(); });
+document.getElementById("btn-zoom-reset").addEventListener("click", () => { state.viewBox = { x: 0, y: 0, w: MAP_W, h: MAP_H }; applyZoom(); });
+
+let clockTimer = null;
+function setSpeed(sp) {
+  if (state.gameEnded) { state.speed = 0; renderTopbar(); return; }
+  state.speed = sp;
+  if (clockTimer) { clearTimeout(clockTimer); clockTimer = null; }
+  if (sp > 0) scheduleNextTick();
+  renderTopbar();
+}
+function scheduleNextTick() {
+  const ms = CONFIG.baseTickMs / state.speed;
+  clockTimer = setTimeout(() => { gameTick(); if (state.speed > 0 && !state.gameEnded) scheduleNextTick(); }, ms);
+}
+function gameTick() {
+  if (state.gameEnded || state.pendingEvent) return;
+  state.tick += 1;
+  if (state.tick % CONFIG.ticksPerDay === 0) { state.dayCount += 1; dailySettlement(); renderTopbar(); }
+}
+const $setOverlay = document.getElementById("settings-overlay");
+function openSettings() { document.getElementById("set-speed").value = String(settings.defaultSpeed); document.getElementById("set-sound").value = settings.soundEnabled ? "1" : "0"; updateSaveInfoUI(); $setOverlay.classList.remove("hidden"); }
+function closeSettings() { $setOverlay.classList.add("hidden"); }
+document.getElementById("set-speed").addEventListener("change", ev => { const v = Number(ev.target.value); settings.defaultSpeed = v; saveSettings(); if (!state.gameEnded) setSpeed(v); });
+document.getElementById("set-sound").addEventListener("change", ev => { settings.soundEnabled = ev.target.value === "1"; saveSettings(); });
+document.getElementById("btn-save").addEventListener("click", () => { const ok = saveGame(false); if (ok) { log("手动保存成功", "good"); toast("已保存", "good"); } });
+document.getElementById("btn-load").addEventListener("click", () => { if (!hasSave()) { alert("无存档"); return; } if (!confirm("读取存档？")) return; closeSettings(); const r = loadSaveData(); if (r.ok) { buildMap(); renderAll(); checkGameEnd(); setSpeed(1); log("已读取存档", "good"); } else alert(r.reason); });
+document.getElementById("btn-delete-save").addEventListener("click", () => { if (!confirm("删除存档？")) return; deleteSave(); log("已删除", "info"); });
+document.getElementById("btn-back-menu").addEventListener("click", () => { if (!confirm("回到主菜单？")) return; closeSettings(); location.reload(); });
+document.getElementById("btn-close-settings").addEventListener("click", closeSettings);
+
+const $startOverlay = document.getElementById("start-overlay");
+function showStartMenu() {
+  const grid = document.getElementById("nation-grid");
+  grid.innerHTML = Object.values(COUNTRIES).map(c => `
+    <div class="ng-item" data-nid="${c.id}">
+      <div class="ng-color" style="background:${c.color}"></div>
+      <div class="ng-name">${c.name}</div>
+      <div class="ng-info">${IDEOLOGY[c.ideology]} · ${c.civilianFactories}/${c.militaryFactories}</div>
+    </div>
+  `).join("");
+  grid.querySelectorAll(".ng-item").forEach(item => item.addEventListener("click", () => {
+    grid.querySelectorAll(".ng-item").forEach(x => x.classList.remove("selected"));
+    item.classList.add("selected");
+    state.playerNationId = item.dataset.nid;
+  }));
+  const def = grid.querySelector(`[data-nid="asteria"]`);
+  if (def) def.classList.add("selected");
+  const meta = getSaveMeta(), me = document.getElementById("start-save-meta");
+  if (meta && meta.version === SAVE_VERSION) {
+    const d = new Date(meta.savedAt);
+    const ts = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    const nn = COUNTRIES[meta.playerNationId] ? COUNTRIES[meta.playerNationId].name : meta.playerNationId;
+    me.innerHTML = `存档：${ts}<br>日期：${formatDate(meta.dayCount)} · ${nn}`;
+    document.getElementById("btn-start-continue").disabled = false;
+  } else {
+    me.innerHTML = "没有存档";
+    document.getElementById("btn-start-continue").disabled = true;
+  }
+  $startOverlay.classList.remove("hidden");
+}
+document.getElementById("btn-start-new").addEventListener("click", () => {
+  $startOverlay.classList.add("hidden");
+  localStorage.removeItem(SAVE_KEY);
+  const playerId = state.playerNationId;
+  initNations();
+  state.playerNationId = playerId;
+  buildMap();
+  renderAll();
+  setSpeed(settings.defaultSpeed || 1);
+  log(`游戏开始 · ${COUNTRIES[state.playerNationId].name}`, "info");
+  log(`你控制 ${PROVINCES.filter(p => p.owner === state.playerNationId).length} 省，${(GENERALS[state.playerNationId] || []).length} 将领`, "diplo");
+  log("提示：滚轮缩放 · 拖动平移 · 空格暂停 · Q 全选 · 1-6 切标签", "diplo");
+  log("胜利：控制 60% 胜利点 或 所有其他国投降", "diplo");
+});
+document.getElementById("btn-start-continue").addEventListener("click", () => {
+  $startOverlay.classList.add("hidden");
+  const r = loadSaveData();
+  if (r.ok) { buildMap(); switchTab(state.activeTab); renderAll(); checkGameEnd(); setSpeed(1); log("已读取存档", "good"); }
+  else alert(r.reason || "存档损坏");
+});
+
+function init() {
+  loadSettings();
+  state.viewBox = { x: 0, y: 0, w: MAP_W, h: MAP_H };
+  initNations();
+  buildMap();
+  // ⚠️ 关键修复：init 末尾渲染一次侧栏，避免开始前空白
+  renderTopbar();
+  renderCountryList();
+  renderProvinceDetail(null);
+  renderLogs();
+  document.querySelectorAll(".tab-btn").forEach(b => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+  document.querySelectorAll(".speed-btn[data-speed]").forEach(b => b.addEventListener("click", () => setSpeed(Number(b.dataset.speed))));
+  document.getElementById("btn-settings").addEventListener("click", openSettings);
+  document.getElementById("btn-restart").addEventListener("click", () => { document.getElementById("endgame-overlay").classList.add("hidden"); localStorage.removeItem(SAVE_KEY); location.reload(); });
+  document.addEventListener("keydown", ev => {
+    if (ev.key === "Escape") { if (!$setOverlay.classList.contains("hidden")) { closeSettings(); return; } if (!document.getElementById("event-overlay").classList.contains("hidden")) return; if (!$startOverlay.classList.contains("hidden")) return; selectProvince(null); if (state.highlightCountryId) toggleCountryFilter(state.highlightCountryId); }
+    else if (ev.code === "Space") { if (!$setOverlay.classList.contains("hidden") || !$startOverlay.classList.contains("hidden") || !document.getElementById("event-overlay").classList.contains("hidden")) return; if (!document.getElementById("endgame-overlay").classList.contains("hidden")) return; ev.preventDefault(); if (!state.gameEnded) setSpeed(state.speed === 0 ? 1 : 0); }
+    else if ((ev.ctrlKey || ev.metaKey) && ev.key === "s") { ev.preventDefault(); saveGame(false); }
+    else if (ev.key === "q" || ev.key === "Q") { if (state.selectedProvinceId) selectAllDivisionsInProvince(state.selectedProvinceId); }
+    else if (ev.key === "w" || ev.key === "W") { clearDivisionSelection(); }
+    else if (ev.key === "1") switchTab("province");
+    else if (ev.key === "2") switchTab("production");
+    else if (ev.key === "3") switchTab("focus");
+    else if (ev.key === "4") switchTab("tech");
+    else if (ev.key === "5") switchTab("military");
+    else if (ev.key === "6") switchTab("diplomacy");
+  });
+  showStartMenu();
+}
+init();
+</script>
+</body>
+</html>
